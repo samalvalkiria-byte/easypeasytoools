@@ -1,243 +1,164 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Склейка PDF</title>
+<title>Merge PDF</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Playfair+Display:wght@900&family=Source+Serif+4:ital,wght@0,700;1,600&display=swap" rel="stylesheet">
 <style>
   :root{
-    color-scheme: light dark;
-    --canvas:#D7DCE2;
-    --canvas-deep:#C8CFD7;
-    --sheet:#FFFFFF;
-    --ink:#15181D;
-    --muted:#646E7A;
-    --line:#B7C0CA;
-    --accent:#0E6B58;
-    --accent-soft:rgba(14,107,88,.12);
-    --shadow:0 1px 2px rgba(20,28,38,.18), 0 10px 24px rgba(20,28,38,.14);
+    color-scheme: light;
+    --bg:#f0efeb;
+    --ink:#0d0d0c;
+    --muted:#66645e;
+    --soft:rgba(13,13,12,.22);
+    --serif:"Source Serif 4", Georgia, "Times New Roman", serif;
+    --display:"Playfair Display", "Bodoni 72", Didot, Georgia, serif;
+    --mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
     box-sizing:border-box;
-    padding-top: env(safe-area-inset-top, 0px);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){
-      --canvas:#1B1E23;
-      --canvas-deep:#141619;
-      --sheet:#F2F3F5;
-      --ink:#E9EBEE;
-      --muted:#8A94A0;
-      --line:#343A42;
-      --accent:#5FD8B4;
-      --accent-soft:rgba(95,216,180,.14);
-      --shadow:0 1px 2px rgba(0,0,0,.5), 0 12px 28px rgba(0,0,0,.42);
-    }
-  }
-  :root[data-theme="dark"]{
-    --canvas:#1B1E23;
-    --canvas-deep:#141619;
-    --sheet:#F2F3F5;
-    --ink:#E9EBEE;
-    --muted:#8A94A0;
-    --line:#343A42;
-    --accent:#5FD8B4;
-    --accent-soft:rgba(95,216,180,.14);
-    --shadow:0 1px 2px rgba(0,0,0,.5), 0 12px 28px rgba(0,0,0,.42);
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
   }
   *,*::before,*::after{box-sizing:inherit}
-  html{scroll-padding-top: calc(env(safe-area-inset-top,0px) + 64px)}
+  html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 70px)}
   body{
     margin:0;
-    background:var(--canvas);
+    background-color:var(--bg);
     color:var(--ink);
-    font-family:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    font-size:16px;
-    line-height:1.5;
+    font-family:var(--mono);
+    font-size:15px; line-height:1.55;
     -webkit-font-smoothing:antialiased;
   }
+  button{font:inherit; color:inherit}
+  .wrap{max-width:1240px; margin:0 auto; padding:0 clamp(16px,5vw,64px)}
+  .spacer{flex:1}
 
-  /* ---- шапка ---- */
-  header{
-    position:sticky;
-    top: env(safe-area-inset-top, 0px);
-    z-index:20;
-    display:flex;
-    align-items:center;
-    gap:16px;
-    padding:12px 20px;
-    background:color-mix(in srgb, var(--canvas) 88%, transparent);
-    backdrop-filter:blur(10px);
-    border-bottom:1px solid var(--line);
-  }
+  /* ---- header ---- */
+  .top{display:flex; justify-content:space-between; align-items:center; padding-top:32px}
+  .eyebrow{margin:0; font-size:13px; letter-spacing:.2em; color:var(--muted)}
   h1{
     margin:0;
-    font-size:17px;
-    font-weight:600;
-    letter-spacing:-.01em;
-    white-space:nowrap;
+    font-family:var(--display); font-weight:900; text-transform:uppercase;
+    font-size:clamp(40px,7vw,88px); line-height:.9; letter-spacing:-.01em;
   }
-  .count{
-    font-family:"IBM Plex Mono",ui-monospace,monospace;
-    font-size:13px;
-    color:var(--muted);
-    white-space:nowrap;
+  .tag{
+    margin:16px 0 32px; max-width:26em;
+    font-family:var(--serif); font-style:italic; font-weight:600;
+    font-size:clamp(18px,2vw,22px); line-height:1.35;
   }
-  .spacer{flex:1}
-  button{
-    font:inherit;
-    font-size:14px;
-    font-weight:500;
-    border-radius:7px;
-    border:1px solid var(--line);
-    background:transparent;
-    color:var(--ink);
-    padding:8px 14px;
-    cursor:pointer;
-    transition:background .12s ease, border-color .12s ease, opacity .12s ease;
-  }
-  button:hover:not(:disabled){background:var(--accent-soft); border-color:var(--accent)}
-  button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
-  button:disabled{opacity:.4; cursor:not-allowed}
-  .primary{
-    background:var(--accent);
-    border-color:var(--accent);
-    color:var(--canvas-deep);
-    font-weight:600;
-  }
-  .primary:hover:not(:disabled){background:var(--accent); filter:brightness(1.07)}
+  hr{border:0; border-top:1px solid var(--ink); margin:0}
 
-  /* ---- лента ---- */
-  main{padding:28px 20px 120px; display:flex; flex-direction:column; align-items:center}
-  .ribbon{width:100%; max-width:880px}
+  /* ---- buttons ---- */
+  .btn{
+    font-size:13px; font-weight:500; letter-spacing:.08em; text-transform:uppercase;
+    background:transparent; border:1px solid var(--ink); border-radius:0;
+    padding:11px 16px; cursor:pointer;
+    transition:background .12s ease, color .12s ease;
+  }
+  .btn:hover:not(:disabled){background:var(--ink); color:var(--bg)}
+  .btn.primary{background:var(--ink); color:var(--bg)}
+  .btn.primary:hover:not(:disabled){background:transparent; color:var(--ink)}
+  .btn:disabled{opacity:.35; cursor:not-allowed}
+  .btn.sm{padding:8px 12px}
+  button:focus-visible{outline:2px solid var(--ink); outline-offset:3px}
 
-  .file{margin-bottom:10px}
-  .file-bar{
-    display:flex; align-items:center; gap:10px;
-    padding:6px 2px 8px;
-    font-size:13px; color:var(--muted);
+  /* ---- bar ---- */
+  .bar{
+    position:sticky; top:env(safe-area-inset-top,0px); z-index:20;
+    display:flex; align-items:center; flex-wrap:wrap; gap:10px;
+    padding:12px 0;
+    background:color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--ink);
   }
-  .file-name{
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-    max-width:min(60vw, 480px);
-  }
-  .file-bar .mini{
-    border:1px solid var(--line); background:transparent; color:var(--muted);
-    width:26px; height:26px; padding:0; border-radius:6px;
-    font-size:13px; line-height:1; display:grid; place-items:center;
-  }
-  .file-bar .mini:hover:not(:disabled){color:var(--ink)}
+  .count{font-size:13px; color:var(--muted); white-space:nowrap}
 
-  .sheet-row{
-    display:grid;
-    grid-template-columns:44px 1fr;
-    align-items:start;
-    margin-bottom:10px;
+  /* ---- ribbon ---- */
+  main{padding:32px 0 120px}
+  .ribbon{width:100%; max-width:900px; margin:0 auto}
+  .file{margin-bottom:14px}
+  .file-bar{display:flex; align-items:center; gap:12px; padding:6px 0 10px; font-size:12px; color:var(--muted)}
+  .file-name{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:min(60vw,480px); color:var(--ink)}
+  .mini{
+    width:28px; height:28px; padding:0; display:grid; place-items:center;
+    border:1px solid var(--ink); border-radius:0; background:transparent;
+    font-size:13px; line-height:1; cursor:pointer;
   }
-  .num{
-    font-family:"IBM Plex Mono",ui-monospace,monospace;
-    font-size:12px;
-    color:var(--muted);
-    padding-top:6px;
-    text-align:right;
-    padding-right:14px;
-    border-right:1px solid var(--line);
-    align-self:stretch;
-  }
-  .sheet{
-    background:var(--sheet);
-    box-shadow:var(--shadow);
-    border-radius:2px;
-    margin-left:14px;
-    width:100%;
-    overflow:hidden;
-    position:relative;
-  }
+  .mini:hover:not(:disabled){background:var(--ink); color:var(--bg)}
+  .mini:disabled{opacity:.3; cursor:not-allowed}
+  .sheet-row{display:grid; grid-template-columns:44px 1fr; align-items:start; margin-bottom:12px}
+  .num{font-size:12px; color:var(--muted); padding:6px 14px 0 0; text-align:right; border-right:1px solid var(--soft); align-self:stretch}
+  .sheet{position:relative; overflow:hidden; width:100%; margin-left:14px; background:#fff; border:1px solid var(--soft)}
   .sheet canvas{display:block; width:100%; height:auto}
-  .sheet.pending::after{
-    content:"";
-    position:absolute; inset:0;
-    background:var(--sheet);
-  }
+  .sheet.pending::after{content:""; position:absolute; inset:0; background:#fff}
 
-  /* ---- пустой экран ---- */
-  .empty{
-    width:100%; max-width:880px;
-    margin-top:6vh;
-    border:1.5px dashed var(--line);
-    border-radius:10px;
-    padding:64px 28px;
-    text-align:center;
+  /* ---- drop zone ---- */
+  .zone{
+    display:grid; place-items:center; align-content:center; gap:10px;
+    width:100%; min-height:min(40vh,320px); padding:48px 24px; margin:0;
+    background:#fff; border:1px solid var(--ink); border-radius:0;
+    text-align:center; cursor:pointer;
+    transition:box-shadow .12s ease, transform .12s ease;
   }
-  .empty p{margin:0 0 6px; font-size:19px; font-weight:500}
-  .empty small{color:var(--muted); font-size:14px; display:block; margin-bottom:22px}
+  .zone:hover{background:#fafaf8}
+  .zone svg{margin-bottom:14px}
+  .zt{font-family:var(--serif); font-weight:700; font-size:clamp(22px,3vw,30px); line-height:1.1}
+  .zh{font-size:14px; color:var(--muted)}
 
-  /* ---- оверлей перетаскивания ---- */
-  #drop{
-    position:fixed; inset:0; z-index:40;
-    display:none; place-items:center;
-    background:color-mix(in srgb, var(--canvas) 78%, transparent);
-  }
+  /* ---- drag overlay and status ---- */
+  #drop{position:fixed; inset:0; z-index:40; display:none; place-items:center; background:color-mix(in srgb, var(--bg) 82%, transparent)}
   #drop.on{display:grid}
-  #drop div{
-    border:2px dashed var(--accent);
-    border-radius:12px;
-    padding:36px 52px;
-    font-size:18px; font-weight:500;
-    background:var(--canvas);
-  }
-
+  #drop div{background:#fff; border:2px dashed var(--ink); padding:36px 52px; font-family:var(--serif); font-weight:700; font-size:24px; text-align:center}
   #status{
-    position:fixed;
-    left:50%; transform:translateX(-50%);
+    position:fixed; left:50%; transform:translateX(-50%); z-index:30;
     bottom:calc(20px + env(safe-area-inset-bottom,0px));
-    z-index:30;
-    background:var(--canvas-deep);
-    border:1px solid var(--line);
-    color:var(--ink);
-    padding:9px 16px; border-radius:8px;
-    font-size:14px;
-    box-shadow:var(--shadow);
-    display:none;
-    max-width:min(92vw,560px);
+    display:none; max-width:min(92vw,560px);
+    background:var(--ink); color:var(--bg); padding:10px 16px; font-size:13px;
   }
   #status.on{display:block}
 
   @media (max-width:640px){
-    header{padding:10px 12px; gap:10px}
-    h1{font-size:15px}
-    main{padding:18px 10px 100px}
+    .top{padding-top:28px}
     .sheet-row{grid-template-columns:30px 1fr}
     .num{padding-right:8px}
     .sheet{margin-left:8px}
-    .count{display:none}
+    .bar .btn{padding:9px 12px}
   }
-  @media (prefers-reduced-motion: reduce){*{transition:none !important}}
+  @media (prefers-reduced-motion:reduce){*{transition:none !important}}
 </style>
 </head>
 <body>
+<div class="wrap">
+  <div class="top">
+    <h1 data-i="title"></h1>
+    <button class="btn sm" id="lang" type="button" aria-label="Language"></button>
+  </div>
+  <p class="tag" data-i="tag"></p>
+  <hr>
 
-<header>
-  <h1>Склейка PDF</h1>
-  <span class="count" id="count"></span>
-  <span class="spacer"></span>
-  <button id="add">Добавить файлы</button>
-  <button id="clear" disabled>Очистить</button>
-  <button id="save" class="primary" disabled>Сохранить одним PDF</button>
-</header>
+  <div class="bar">
+    <span class="count" id="count"></span>
+    <span class="spacer"></span>
+    <button class="btn" id="add" type="button" data-i="add"></button>
+    <button class="btn" id="clear" type="button" data-i="clear" disabled></button>
+    <button class="btn primary" id="save" type="button" data-i="save" disabled></button>
+  </div>
 
-<main>
-  <div class="ribbon" id="ribbon"></div>
-  <section class="empty" id="empty">
-    <p>Перетащите сюда PDF-файлы</p>
-    <small>Страницы встанут одной лентой сверху вниз — в том порядке, в котором вы их добавите</small>
-    <button id="add2">Выбрать файлы</button>
-  </section>
-</main>
+  <main>
+    <div class="ribbon" id="ribbon"></div>
+    <section id="empty">
+      <button class="zone" id="add2" type="button">
+        <svg width="44" height="44" viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 30V8M13 16l9-9 9 9M7 28v8h30v-8"/></svg>
+        <span class="zt" data-i="zt"></span>
+        <span class="zh" data-i="zh"></span>
+      </button>
+    </section>
+  </main>
+</div>
 
-<div id="drop"><div>Отпустите — добавлю в конец ленты</div></div>
+<div id="drop"><div data-i="drop"></div></div>
 <div id="status" role="status" aria-live="polite"></div>
 <input type="file" id="picker" accept="application/pdf,.pdf" multiple hidden>
 
@@ -263,6 +184,53 @@
   var countEl = document.getElementById("count");
   var hideTimer;
 
+  var L = "en";
+  try { L = localStorage.getItem("pdfmerge-lang") === "ru" ? "ru" : "en"; } catch(e){}
+  var T = {
+    ru: {
+      doc:"Склейка PDF", eyebrow:"PDF · СКЛЕЙКА · В БРАУЗЕРЕ", title:"Склейка",
+      tag:"Несколько PDF в одну ленту — в порядке добавления.",
+      note:"Всё работает локально в вашем браузере.\nФайлы никуда не загружаются и нигде не хранятся.",
+      add:"Добавить файлы", clear:"Очистить", save:"Сохранить одним PDF",
+      zt:"Перетащите PDF сюда", zh:"или нажмите, чтобы выбрать файлы",
+      drop:"Отпустите — добавлю в конец ленты",
+      up:"Поднять выше", down:"Опустить ниже", del:"Убрать файл",
+      notpdf:"Это не PDF. Подходят только файлы .pdf",
+      merging:"Собираю…", done:"Готово", unknown:"неизвестная ошибка",
+      nf:function(n){ return n + " " + plural(n,"файл","файла","файлов"); },
+      np:function(n){ return n + " " + plural(n,"страница","страницы","страниц"); },
+      reading:function(n){ return "Читаю " + T.ru.nf(n) + "…"; },
+      bad:function(n){ return "Не получилось открыть «" + n + "» — файл повреждён или защищён паролем"; },
+      fail:function(m){ return "Сохранить не вышло: " + m; }
+    },
+    en: {
+      doc:"Merge PDF", eyebrow:"PDF · MERGE · IN YOUR BROWSER", title:"Merge",
+      tag:"Several PDFs in one ribbon, in the order you add them.",
+      note:"Everything runs locally in your browser.\nNothing is uploaded or stored anywhere.",
+      add:"Add files", clear:"Clear", save:"Save as one PDF",
+      zt:"Drop PDFs here", zh:"or click to choose files",
+      drop:"Release to add to the end of the ribbon",
+      up:"Move up", down:"Move down", del:"Remove file",
+      notpdf:"That's not a PDF. Only .pdf files work.",
+      merging:"Merging…", done:"Done", unknown:"unknown error",
+      nf:function(n){ return n + (n === 1 ? " file" : " files"); },
+      np:function(n){ return n + (n === 1 ? " page" : " pages"); },
+      reading:function(n){ return "Reading " + T.en.nf(n) + "…"; },
+      bad:function(n){ return "Couldn't open “" + n + "” — the file is damaged or password-protected"; },
+      fail:function(m){ return "Couldn't save: " + m; }
+    }
+  };
+  function t(k, a){ var s = T[L][k]; return typeof s === "function" ? s(a) : s; }
+  function setLang(l, save){
+    L = l;
+    if (save) { try { localStorage.setItem("pdfmerge-lang", l); } catch(e){} }
+    document.documentElement.lang = l;
+    document.title = t("doc");
+    document.querySelectorAll("[data-i]").forEach(function(el){ el.textContent = t(el.dataset.i); });
+    document.getElementById("lang").textContent = l === "ru" ? "EN" : "RU";
+    render();
+  }
+
   function say(text, sticky){
     clearTimeout(hideTimer);
     if (!text){ statusEl.classList.remove("on"); return; }
@@ -271,7 +239,7 @@
     if (!sticky) hideTimer = setTimeout(function(){ statusEl.classList.remove("on"); }, 3500);
   }
 
-  /* ---------- ленивая отрисовка страниц ---------- */
+  /* ---------- lazy page rendering ---------- */
   var io = new IntersectionObserver(function(entries){
     entries.forEach(function(e){
       if (!e.isIntersecting) return;
@@ -305,7 +273,7 @@
     });
   }
 
-  /* ---------- сборка ленты ---------- */
+  /* ---------- build the ribbon ---------- */
   function render(){
     ribbon.innerHTML = "";
     var total = 0;
@@ -314,8 +282,8 @@
     empty.style.display = files.length ? "none" : "";
     btnSave.disabled = btnClear.disabled = !files.length;
     countEl.textContent = files.length
-      ? files.length + " " + plural(files.length, "файл","файла","файлов") + " · " +
-        total + " " + plural(total, "страница","страницы","страниц")
+      ? t("nf", files.length) + " · " +
+        t("np", total)
       : "";
 
     var num = 0;
@@ -332,16 +300,16 @@
       bar.appendChild(name);
 
       var meta = document.createElement("span");
-      meta.textContent = f.pages + " " + plural(f.pages, "страница","страницы","страниц");
+      meta.textContent = t("np", f.pages);
       bar.appendChild(meta);
 
       var sp = document.createElement("span");
       sp.className = "spacer";
       bar.appendChild(sp);
 
-      bar.appendChild(mini("↑", "Поднять выше", idx === 0, function(){ move(idx, -1); }));
-      bar.appendChild(mini("↓", "Опустить ниже", idx === files.length - 1, function(){ move(idx, 1); }));
-      bar.appendChild(mini("✕", "Убрать файл", false, function(){ remove(f.id); }));
+      bar.appendChild(mini("↑", t("up"), idx === 0, function(){ move(idx, -1); }));
+      bar.appendChild(mini("↓", t("down"), idx === files.length - 1, function(){ move(idx, 1); }));
+      bar.appendChild(mini("✕", t("del"), false, function(){ remove(f.id); }));
       block.appendChild(bar);
 
       for (var p = 1; p <= f.pages; p++){
@@ -399,13 +367,13 @@
     render();
   }
 
-  /* ---------- приём файлов ---------- */
+  /* ---------- accepting files ---------- */
   function accept(list){
     var arr = Array.prototype.slice.call(list).filter(function(f){
       return /\.pdf$/i.test(f.name) || f.type === "application/pdf";
     });
-    if (!arr.length){ say("Это не PDF. Подходят только файлы .pdf"); return; }
-    say("Читаю " + arr.length + " " + plural(arr.length,"файл","файла","файлов") + "…", true);
+    if (!arr.length){ say(t("notpdf")); return; }
+    say(t("reading", arr.length), true);
 
     var chain = Promise.resolve();
     arr.forEach(function(file){
@@ -441,15 +409,15 @@
         });
       });
     }).catch(function(){
-      say("Не получилось открыть «" + file.name + "» — файл повреждён или защищён паролем");
+      say(t("bad", file.name));
     });
   }
 
-  /* ---------- сохранение ---------- */
+  /* ---------- saving ---------- */
   function merge(){
     var out;
     btnSave.disabled = true;
-    say("Собираю…", true);
+    say(t("merging"), true);
     return PDFLib.PDFDocument.create().then(function(d){
       out = d;
       var chain = Promise.resolve();
@@ -483,16 +451,16 @@
         return { status: "saved" };
       });
     }).then(function(){
-      say("Готово");
+      say(t("done"));
     }).catch(function(err){
       if (err && err.code === "declined") say("");
-      else say("Сохранить не вышло: " + ((err && err.message) || "неизвестная ошибка"));
+      else say(t("fail", (err && err.message) || t("unknown")));
     }).then(function(){
       btnSave.disabled = !files.length;
     });
   }
 
-  /* ---------- события ---------- */
+  /* ---------- events ---------- */
   var dropEl = document.getElementById("drop");
   var depth = 0;
   window.addEventListener("dragenter", function(e){
@@ -522,7 +490,8 @@
     }, 300);
   });
 
-  render();
+  document.getElementById("lang").addEventListener("click", function(){ setLang(L === "ru" ? "en" : "ru", true); });
+  setLang(L);
 })();
 </script>
 </body>
