@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stipple — turn any photo into a halftone plate</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23f2efe7'/%3E%3Ccircle cx='34' cy='36' r='15' fill='%2315120f'/%3E%3Cline x1='16' y1='16' x2='16' y2='32' stroke='%23c81d25' stroke-width='2.6'/%3E%3Cline x1='8' y1='24' x2='24' y2='24' stroke='%23c81d25' stroke-width='2.6'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,450;9..144,600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f2efe7;
+    --paper-2:#e9e4d6;
+    --ink:#15120f;
+    --ink-soft:#4a453d;
+    --line:#c9c2b0;
+    --red:#c81d25;
+    --canvas-bg:#ffffff;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Mono', monospace;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* -------- registration mark -------- */
+  .reg{
+    position:relative;
+    width:14px;height:14px;
+    display:inline-block;
+    flex:none;
+  }
+  .reg::before,.reg::after{
+    content:"";
+    position:absolute;
+    background:var(--red);
+  }
+  .reg::before{ top:6px; left:0; width:14px; height:1.4px; }
+  .reg::after{ left:6px; top:0; width:1.4px; height:14px; }
+
+  header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:22px 32px;
+    border-bottom:1px solid var(--line);
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:20px;
+    letter-spacing:0.01em;
+  }
+  .brand span.mark{color:var(--red);}
+  nav.meta{
+    font-size:11px;
+    color:var(--ink-soft);
+    display:flex;
+    gap:22px;
+  }
+  nav.meta em{font-style:normal;color:var(--ink);}
+
+  .hero{
+    padding:56px 32px 40px;
+    max-width:880px;
+  }
+  .hero h1{
+    font-family:'Fraunces', serif;
+    font-weight:450;
+    font-size:clamp(32px, 5vw, 54px);
+    line-height:1.08;
+    margin:0 0 18px;
+    letter-spacing:-0.01em;
+  }
+  .hero p{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:14px;
+    line-height:1.7;
+    color:var(--ink-soft);
+    max-width:52ch;
+    margin:0;
+  }
+
+  main{
+    display:grid;
+    grid-template-columns:1fr 300px;
+    gap:0;
+    border-top:1px solid var(--line);
+  }
+  @media (max-width:860px){
+    main{grid-template-columns:1fr;}
+  }
+
+  .stage{
+    padding:32px;
+    border-right:1px solid var(--line);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:18px;
+  }
+  @media (max-width:860px){
+    .stage{border-right:none; border-bottom:1px solid var(--line);}
+  }
+
+  .canvas-wrap{
+    position:relative;
+    width:100%;
+    max-width:560px;
+    aspect-ratio:1/1;
+    background:var(--canvas-bg);
+    border:1px solid var(--line);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+  }
+  .canvas-wrap canvas{
+    width:100%;
+    height:100%;
+    display:block;
+  }
+  .canvas-wrap.drag{
+    outline:1.4px dashed var(--red);
+    outline-offset:-8px;
+  }
+
+  .drop-hint{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    font-size:12px;
+    color:var(--ink-soft);
+    pointer-events:none;
+    padding:24px;
+    line-height:1.6;
+  }
+  .drop-hint b{color:var(--ink); font-weight:500;}
+
+  .stage-actions{
+    display:flex;
+    gap:12px;
+    width:100%;
+    max-width:560px;
+  }
+
+  button{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.02em;
+    background:transparent;
+    border:1px solid var(--ink);
+    color:var(--ink);
+    padding:10px 16px;
+    cursor:pointer;
+    transition:background 0.15s ease, color 0.15s ease;
+  }
+  button:hover{ background:var(--ink); color:var(--paper); }
+  button.primary{
+    background:var(--ink);
+    color:var(--paper);
+    border-color:var(--ink);
+  }
+  button.primary:hover{
+    background:var(--red);
+    border-color:var(--red);
+    color:#fff;
+  }
+  button:focus-visible, input:focus-visible, .swatch:focus-visible{
+    outline:2px solid var(--red);
+    outline-offset:2px;
+  }
+
+  input[type="file"]{ display:none; }
+
+  .panel{
+    padding:32px 28px;
+    display:flex;
+    flex-direction:column;
+    gap:30px;
+  }
+  .field{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .field-label{
+    display:flex;
+    justify-content:space-between;
+    font-size:11px;
+    letter-spacing:0.03em;
+    color:var(--ink-soft);
+  }
+  .field-label b{
+    font-weight:500;
+    color:var(--ink);
+  }
+  .field-label .val{
+    font-variant-numeric:tabular-nums;
+    color:var(--red);
+  }
+
+  input[type="range"]{
+    -webkit-appearance:none;
+    appearance:none;
+    width:100%;
+    height:1px;
+    background:var(--line);
+    outline:none;
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:12px; height:12px;
+    border-radius:50%;
+    background:var(--ink);
+    border:2px solid var(--paper);
+    box-shadow:0 0 0 1px var(--ink);
+    cursor:pointer;
+    margin-top:0;
+  }
+  input[type="range"]::-moz-range-thumb{
+    width:12px; height:12px;
+    border-radius:50%;
+    background:var(--ink);
+    border:2px solid var(--paper);
+    box-shadow:0 0 0 1px var(--ink);
+    cursor:pointer;
+  }
+
+  .toggle-row{
+    display:flex;
+    border:1px solid var(--ink);
+  }
+  .toggle-row button{
+    flex:1;
+    border:none;
+    border-right:1px solid var(--ink);
+    background:transparent;
+  }
+  .toggle-row button:last-child{ border-right:none; }
+  .toggle-row button.active{
+    background:var(--ink);
+    color:var(--paper);
+  }
+  .toggle-row button.active:hover{
+    background:var(--red);
+    color:#fff;
+  }
+
+  .swatches{
+    display:flex;
+    gap:8px;
+  }
+  .swatch{
+    width:26px; height:26px;
+    border:1px solid var(--line);
+    cursor:pointer;
+    padding:0;
+    position:relative;
+  }
+  .swatch.active{ border:1.4px solid var(--ink); }
+  .swatch.active::after{
+    content:"";
+    position:absolute;
+    inset:4px;
+    border:1px solid var(--paper);
+  }
+
+  .divider{
+    height:1px;
+    background:var(--line);
+  }
+
+  .spec{
+    font-size:10.5px;
+    line-height:1.9;
+    color:var(--ink-soft);
+  }
+  .spec div{ display:flex; justify-content:space-between; }
+  .spec b{ color:var(--ink); font-weight:500; }
+
+  footer{
+    padding:22px 32px 40px;
+    font-size:11px;
+    color:var(--ink-soft);
+    display:flex;
+    justify-content:space-between;
+    border-top:1px solid var(--line);
+    flex-wrap:wrap;
+    gap:8px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><span class="mark">●</span>Stipple</div>
+  <nav class="meta"><div>fig. <em id="figNo">01</em></div><div>method: <em>halftone screen</em></div></nav>
+</header>
+
+<section class="hero">
+  <h1>Every photograph is dots waiting to happen.</h1>
+  <p>Drop in an image and Stipple breaks it down into a grid of ink dots — the same trick newspapers have used for over a century to fake a photograph out of a single colour. Adjust the screen below.</p>
+</section>
+
+<main>
+  <div class="stage">
+    <div class="canvas-wrap" id="dropZone">
+      <canvas id="outCanvas" width="640" height="640"></canvas>
+      <div class="drop-hint" id="dropHint"><span><b>Drop an image here</b><br>or use "Upload photo" below<br>— starting with a sample plate —</span></div>
+    </div>
+    <div class="stage-actions">
+      <button class="primary" id="uploadBtn">Upload photo</button>
+      <button id="downloadBtn">Download PNG</button>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="field">
+      <div class="field-label"><b>Dot size</b><span class="val" id="dotSizeVal">10 pt</span></div>
+      <input type="range" id="dotSize" min="4" max="34" value="10" step="1">
+    </div>
+
+    <div class="field">
+      <div class="field-label"><b>Contrast</b><span class="val" id="contrastVal">100%</span></div>
+      <input type="range" id="contrast" min="50" max="200" value="100" step="5">
+    </div>
+
+    <div class="field">
+      <div class="field-label"><b>Plate</b></div>
+      <div class="toggle-row">
+        <button id="modeBW" class="active">Black &amp; white</button>
+        <button id="modeColor">Colour</button>
+      </div>
+    </div>
+
+    <div class="field" id="inkField">
+      <div class="field-label"><b>Ink</b></div>
+      <div class="swatches" id="inkSwatches">
+        <button class="swatch active" data-ink="#15120f" style="background:#15120f" aria-label="Black ink"></button>
+        <button class="swatch" data-ink="#c81d25" style="background:#c81d25" aria-label="Red ink"></button>
+        <button class="swatch" data-ink="#1a4d8f" style="background:#1a4d8f" aria-label="Blue ink"></button>
+        <button class="swatch" data-ink="#2f6b3a" style="background:#2f6b3a" aria-label="Green ink"></button>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label"><b>Paper</b></div>
+      <div class="toggle-row">
+        <button id="paperLight" class="active">Light</button>
+        <button id="paperDark">Dark</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="spec">
+      <div><span>grid</span><b id="specGrid">64 × 64</b></div>
+      <div><span>screen angle</span><b>0°</b></div>
+      <div><span>source</span><b id="specSource">sample</b></div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div>Stipple — a halftone screen, run in your browser.</div>
+  <div>No image ever leaves your device.</div>
+</footer>
+
+<script>
+(function(){
+  const outCanvas = document.getElementById('outCanvas');
+  const ctx = outCanvas.getContext('2d');
+  const W = outCanvas.width, H = outCanvas.height;
+
+  const dropZone = document.getElementById('dropZone');
+  const dropHint = document.getElementById('dropHint');
+  const fileInput = document.getElementById('fileInput');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+
+  const dotSize = document.getElementById('dotSize');
+  const dotSizeVal = document.getElementById('dotSizeVal');
+  const contrast = document.getElementById('contrast');
+  const contrastVal = document.getElementById('contrastVal');
+  const modeBW = document.getElementById('modeBW');
+  const modeColor = document.getElementById('modeColor');
+  const inkField = document.getElementById('inkField');
+  const inkSwatches = document.getElementById('inkSwatches');
+  const paperLight = document.getElementById('paperLight');
+  const paperDark = document.getElementById('paperDark');
+  const specGrid = document.getElementById('specGrid');
+  const specSource = document.getElementById('specSource');
+  const figNo = document.getElementById('figNo');
+
+  // offscreen working canvas at source-image resolution
+  const work = document.createElement('canvas');
+  const wctx = work.getContext('2d', { willReadFrequently: true });
+
+  let sourceImg = null;
+  let mode = 'bw';           // 'bw' | 'color'
+  let ink = '#15120f';
+  let paper = '#ffffff';
+  let figCount = 1;
+
+  function setFig(){
+    figCount++;
+    figNo.textContent = String(figCount).padStart(2,'0');
+  }
+
+  function makeSampleImage(){
+    // generate a soft radial portrait-like gradient so the tool
+    // demonstrates itself before any upload
+    const c = document.createElement('canvas');
+    c.width = 500; c.height = 500;
+    const cx = c.getContext('2d');
+    cx.fillStyle = '#ffffff';
+    cx.fillRect(0,0,c.width,c.height);
+    const g = cx.createRadialGradient(250,230,20,250,250,260);
+    g.addColorStop(0, '#0c0c0c');
+    g.addColorStop(0.45, '#3a3a3a');
+    g.addColorStop(0.75, '#8f8f8f');
+    g.addColorStop(1, '#ffffff');
+    cx.fillStyle = g;
+    cx.beginPath();
+    cx.arc(250,250,250,0,Math.PI*2);
+    cx.fill();
+    // a couple of darker accents so it doesn't look like a flat blob
+    cx.beginPath();
+    cx.ellipse(190,200,55,40,0.4,0,Math.PI*2);
+    cx.fillStyle = 'rgba(0,0,0,0.35)';
+    cx.fill();
+    const img = new Image();
+    img.src = c.toDataURL();
+    return img;
+  }
+
+  function loadImage(src, sourceLabel){
+    const img = new Image();
+    img.onload = () => {
+      sourceImg = img;
+      specSource.textContent = sourceLabel;
+      dropHint.style.display = 'none';
+      render();
+      setFig();
+    };
+    img.src = src;
+  }
+
+  function render(){
+    if(!sourceImg) return;
+
+    // fit source into a square working canvas
+    const size = 500;
+    work.width = size; work.height = size;
+    wctx.clearRect(0,0,size,size);
+    wctx.fillStyle = '#ffffff';
+    wctx.fillRect(0,0,size,size);
+    const iw = sourceImg.width, ih = sourceImg.height;
+    const scale = Math.min(size/iw, size/ih);
+    const dw = iw*scale, dh = ih*scale;
+    wctx.drawImage(sourceImg, (size-dw)/2, (size-dh)/2, dw, dh);
+
+    const cell = parseInt(dotSize.value, 10);
+    const cols = Math.ceil(size/cell);
+    const rows = Math.ceil(size/cell);
+    specGrid.textContent = cols + ' × ' + rows;
+
+    // downsample by drawing into a tiny canvas the size of the grid —
+    // each resulting pixel is the average colour of its cell
+    const tiny = document.createElement('canvas');
+    tiny.width = cols; tiny.height = rows;
+    const tctx = tiny.getContext('2d');
+    tctx.imageSmoothingEnabled = true;
+    tctx.drawImage(work, 0, 0, size, size, 0, 0, cols, rows);
+    const data = tctx.getImageData(0,0,cols,rows).data;
+
+    // paint output
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle = paper;
+    ctx.fillRect(0,0,W,H);
+
+    const sx = W/cols, sy = H/rows;
+    const c = parseInt(contrast.value,10)/100;
+    const maxR = (Math.min(sx,sy)/2) * 0.94;
+
+    const inkRGB = hexToRgb(ink);
+
+    for(let ry=0; ry<rows; ry++){
+      for(let rx=0; rx<cols; rx++){
+        const idx = (ry*cols+rx)*4;
+        let r = data[idx], g = data[idx+1], b = data[idx+2];
+
+        let lum = (0.299*r + 0.587*g + 0.114*b)/255;
+        // contrast around midpoint
+        lum = clamp01(0.5 + (lum-0.5)*c);
+        const darkness = 1 - lum;
+        if(darkness <= 0.012) continue;
+
+        const radius = maxR * Math.sqrt(darkness);
+        if(radius < 0.4) continue;
+
+        const cx2 = rx*sx + sx/2;
+        const cy2 = ry*sy + sy/2;
+
+        if(mode === 'color'){
+          ctx.fillStyle = 'rgb('+r+','+g+','+b+')';
+        } else {
+          ctx.fillStyle = 'rgb('+inkRGB.r+','+inkRGB.g+','+inkRGB.b+')';
+        }
+        ctx.beginPath();
+        ctx.arc(cx2, cy2, radius, 0, Math.PI*2);
+        ctx.fill();
+      }
+    }
+  }
+
+  function clamp01(v){ return Math.max(0, Math.min(1, v)); }
+  function hexToRgb(hex){
+    const n = parseInt(hex.slice(1),16);
+    return { r:(n>>16)&255, g:(n>>8)&255, b:n&255 };
+  }
+
+  // ---- controls ----
+  dotSize.addEventListener('input', () => {
+    dotSizeVal.textContent = dotSize.value + ' pt';
+    render();
+  });
+  contrast.addEventListener('input', () => {
+    contrastVal.textContent = contrast.value + '%';
+    render();
+  });
+
+  modeBW.addEventListener('click', () => {
+    mode = 'bw';
+    modeBW.classList.add('active');
+    modeColor.classList.remove('active');
+    inkField.style.opacity = '1';
+    render();
+  });
+  modeColor.addEventListener('click', () => {
+    mode = 'color';
+    modeColor.classList.add('active');
+    modeBW.classList.remove('active');
+    inkField.style.opacity = '0.35';
+    render();
+  });
+
+  inkSwatches.addEventListener('click', (e) => {
+    const btn = e.target.closest('.swatch');
+    if(!btn) return;
+    ink = btn.dataset.ink;
+    [...inkSwatches.querySelectorAll('.swatch')].forEach(s=>s.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+  });
+
+  paperLight.addEventListener('click', () => {
+    paper = '#ffffff';
+    paperLight.classList.add('active');
+    paperDark.classList.remove('active');
+    render();
+  });
+  paperDark.addEventListener('click', () => {
+    paper = '#111111';
+    paperDark.classList.add('active');
+    paperLight.classList.remove('active');
+    render();
+  });
+
+  uploadBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => {
+    const f = e.target.files[0];
+    if(!f) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => loadImage(ev.target.result, f.name);
+    reader.readAsDataURL(f);
+  });
+
+  ['dragenter','dragover'].forEach(evt => {
+    dropZone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      dropZone.classList.add('drag');
+    });
+  });
+  ['dragleave','drop'].forEach(evt => {
+    dropZone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('drag');
+    });
+  });
+  dropZone.addEventListener('drop', (e) => {
+    const f = e.dataTransfer.files[0];
+    if(!f || !f.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => loadImage(ev.target.result, f.name);
+    reader.readAsDataURL(f);
+  });
+
+  document.addEventListener('paste', (e) => {
+    const items = e.clipboardData && e.clipboardData.items;
+    if(!items) return;
+    for(const item of items){
+      if(item.type && item.type.startsWith('image/')){
+        const f = item.getAsFile();
+        if(!f) continue;
+        const reader = new FileReader();
+        reader.onload = (ev) => loadImage(ev.target.result, 'pasted image');
+        reader.readAsDataURL(f);
+        e.preventDefault();
+        break;
+      }
+    }
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    const link = document.createElement('a');
+    link.download = 'stipple-plate.png';
+    link.href = outCanvas.toDataURL('image/png');
+    link.click();
+  });
+
+  // boot with a generated sample so the effect is visible immediately
+  const sample = makeSampleImage();
+  sample.onload = () => loadImage(sample.src, 'sample plate');
+})();
+</script>
+</body>
+</html>

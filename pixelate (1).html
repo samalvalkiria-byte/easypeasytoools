@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixelate — photo to pixel art</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f2f2ee;
+    --panel:#ffffff;
+    --panel-2:#eceee7;
+    --ink:#17181b;
+    --muted:#56585f;
+    --muted-2:#8a8c92;
+    --accent:#c97a12;
+    --accent-ink:#fffaf0;
+    --line:#dcdcd5;
+    --line-soft:#e6e6e0;
+    --radius:2px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* faint pixel-grid backdrop texture */
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    background-image:
+      linear-gradient(var(--line-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+    background-size:28px 28px;
+    opacity:0.7;
+    pointer-events:none;
+    z-index:0;
+  }
+
+  .wrap{
+    position:relative;
+    z-index:1;
+    max-width:1180px;
+    margin:0 auto;
+    padding:28px 24px 60px;
+  }
+
+  /* header */
+  header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding-bottom:26px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:36px;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+  .brand{display:flex; align-items:center; gap:14px;}
+  .sprite{
+    display:grid;
+    grid-template-columns:repeat(8, 6px);
+    grid-template-rows:repeat(8, 6px);
+    gap:0;
+    flex:none;
+  }
+  .sprite i{display:block;}
+  .sprite i.on{background:var(--accent);}
+  .wordmark{
+    font-family:'Press Start 2P', monospace;
+    font-size:15px;
+    line-height:1.6;
+    letter-spacing:0.5px;
+  }
+  .wordmark span{color:var(--accent);}
+  .tagline{
+    font-size:13px;
+    color:var(--muted);
+    margin-top:2px;
+  }
+  .langs{display:flex; gap:6px;}
+  .lang-btn{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--muted);
+    font-family:'Inter',sans-serif;
+    font-size:12px;
+    font-weight:600;
+    padding:7px 13px;
+    cursor:pointer;
+    letter-spacing:0.5px;
+  }
+  .lang-btn.active{
+    background:var(--ink);
+    color:var(--bg);
+    border-color:var(--ink);
+  }
+
+  /* main layout */
+  main{
+    display:grid;
+    grid-template-columns:1.35fr 0.9fr;
+    gap:28px;
+    align-items:start;
+  }
+  @media (max-width: 860px){
+    main{grid-template-columns:1fr;}
+  }
+
+  .stage{
+    background:var(--panel);
+    border:1px solid var(--line);
+    padding:18px;
+    position:relative;
+  }
+  .stage-corner{
+    position:absolute;
+    width:10px; height:10px;
+    border:2px solid var(--accent);
+  }
+  .stage-corner.tl{top:-1px; left:-1px; border-right:none; border-bottom:none;}
+  .stage-corner.tr{top:-1px; right:-1px; border-left:none; border-bottom:none;}
+  .stage-corner.bl{bottom:-1px; left:-1px; border-right:none; border-top:none;}
+  .stage-corner.br{bottom:-1px; right:-1px; border-left:none; border-top:none;}
+
+  .stage-toolbar{
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+    margin-bottom:12px;
+  }
+  .stage-toolbar button{
+    padding:7px 14px;
+    font-size:12px;
+  }
+
+  .dropzone{
+    aspect-ratio:1/1;
+    width:100%;
+    border:1px dashed var(--line);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    cursor:pointer;
+    position:relative;
+    overflow:hidden;
+    background:var(--panel-2);
+  }
+  .dropzone.drag{border-color:var(--accent);}
+  .dropzone-msg{padding:20px; color:var(--muted);}
+  .dropzone-msg .icon{
+    width:34px; height:34px;
+    margin:0 auto 14px;
+    border:2px solid var(--muted-2);
+    position:relative;
+  }
+  .dropzone-msg .icon::before, .dropzone-msg .icon::after{
+    content:"";
+    position:absolute;
+    background:var(--muted-2);
+  }
+  .dropzone-msg .icon::before{width:14px; height:2px; top:16px; left:10px;}
+  .dropzone-msg .icon::after{width:2px; height:14px; top:10px; left:16px;}
+  .dropzone-msg .main-t{font-size:14px; font-weight:600; color:var(--ink);}
+  .dropzone-msg .sub-t{font-size:12px; margin-top:6px;}
+
+  canvas#outCanvas{
+    display:none;
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    image-rendering:pixelated;
+  }
+  .dropzone.has-image canvas#outCanvas{display:block;}
+  .dropzone.has-image .dropzone-msg{display:none;}
+
+  .stage-foot{
+    display:flex;
+    justify-content:space-between;
+    margin-top:14px;
+    font-size:11.5px;
+    color:var(--muted-2);
+  }
+
+  /* controls panel */
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    padding:22px;
+  }
+  .field{margin-bottom:26px;}
+  .field:last-child{margin-bottom:0;}
+  .field-label{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    font-size:13px;
+    font-weight:600;
+    margin-bottom:10px;
+  }
+  .field-label .val{
+    font-family:'Press Start 2P', monospace;
+    font-size:11px;
+    color:var(--accent);
+  }
+  input[type=range]{
+    -webkit-appearance:none;
+    width:100%;
+    height:2px;
+    background:var(--line);
+    outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:14px; height:14px;
+    background:var(--accent);
+    border-radius:0;
+    cursor:pointer;
+    box-shadow:0 0 0 3px rgba(255,180,84,0.15);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:14px; height:14px;
+    background:var(--accent);
+    border:none;
+    cursor:pointer;
+  }
+
+  .btn-row{display:flex; gap:10px; flex-wrap:wrap;}
+  button{
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:12.5px;
+    padding:11px 16px;
+    border:1px solid var(--line);
+    background:transparent;
+    color:var(--ink);
+    cursor:pointer;
+    letter-spacing:0.2px;
+    transition:border-color 0.15s ease;
+  }
+  button:hover{border-color:var(--muted-2);}
+  button:disabled{opacity:0.35; cursor:not-allowed;}
+  button.primary{
+    background:var(--accent);
+    color:var(--accent-ink);
+    border-color:var(--accent);
+    flex:1;
+  }
+  button.primary:hover{background:#ffc177;}
+  button.toggled{
+    background:var(--ink);
+    color:var(--bg);
+    border-color:var(--ink);
+  }
+
+  .palette{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .swatch{
+    display:flex;
+    align-items:center;
+    gap:0;
+    border:1px solid var(--line);
+    overflow:hidden;
+    position:relative;
+  }
+  .swatch input[type=color]{
+    width:28px; height:28px;
+    border:none;
+    padding:0;
+    cursor:pointer;
+    background:none;
+  }
+  .swatch input[type=color]::-webkit-color-swatch-wrapper{padding:0;}
+  .swatch input[type=color]::-webkit-color-swatch{border:none;}
+  .swatch .hex{
+    font-family:'Press Start 2P', monospace;
+    font-size:9.5px;
+    padding:0 8px;
+    color:var(--muted);
+    background:var(--panel-2);
+    height:28px;
+    display:flex;
+    align-items:center;
+  }
+  .swatch-del{
+    height:28px;
+    width:22px;
+    flex:none;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:var(--panel-2);
+    color:var(--muted-2);
+    font-size:14px;
+    line-height:1;
+    cursor:pointer;
+    border-left:1px solid var(--line);
+  }
+  .swatch-del:hover{color:var(--ink); background:#e2ded3;}
+
+  .note{
+    font-size:11.5px;
+    color:var(--muted-2);
+    margin-top:20px;
+    line-height:1.6;
+  }
+
+  .save-row{
+    display:flex;
+    gap:8px;
+    margin-bottom:14px;
+  }
+  .save-row input[type=text]{
+    flex:1;
+    min-width:0;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    font-size:12.5px;
+    padding:0 10px;
+    height:36px;
+  }
+  .save-row input[type=text]:focus{outline:none; border-color:var(--muted-2);}
+  .save-row button{white-space:nowrap;}
+
+  .saved-list{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .saved-empty{
+    font-size:12px;
+    color:var(--muted-2);
+    padding:4px 0;
+  }
+  .saved-chip{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    border:1px solid var(--line);
+    background:var(--panel-2);
+    padding:7px 10px;
+    cursor:pointer;
+  }
+  .saved-chip:hover{border-color:var(--accent);}
+  .saved-dots{display:flex; flex:none;}
+  .saved-dots span{
+    width:11px; height:11px;
+    display:block;
+    margin-right:-2px;
+    border:1px solid var(--bg);
+  }
+  .saved-name{
+    flex:1;
+    font-size:12.5px;
+    font-weight:500;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .saved-del{
+    flex:none;
+    color:var(--muted-2);
+    font-size:15px;
+    line-height:1;
+    padding:2px 4px;
+  }
+  .saved-del:hover{color:var(--ink);}
+
+  input[type=file]{display:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="sprite" id="sprite"></div>
+      <div>
+        <div class="wordmark">PIXEL<span>ATE</span></div>
+        <div class="tagline" data-i18n="tagline">your photo, redrawn in blocks and a handful of colors</div>
+      </div>
+    </div>
+    <div class="langs">
+      <button class="lang-btn active" data-lang="en">EN</button>
+      <button class="lang-btn" data-lang="ru">RU</button>
+    </div>
+  </header>
+
+  <main>
+    <div>
+      <div class="stage">
+        <div class="stage-corner tl"></div>
+        <div class="stage-corner tr"></div>
+        <div class="stage-corner bl"></div>
+        <div class="stage-corner br"></div>
+        <div class="stage-toolbar">
+          <button id="undoBtn" disabled data-i18n="undo">Undo</button>
+          <button id="redoBtn" disabled data-i18n="redo">Redo</button>
+        </div>
+        <div class="dropzone" id="dropzone">
+          <canvas id="outCanvas"></canvas>
+          <div class="dropzone-msg">
+            <div class="icon"></div>
+            <div class="main-t" data-i18n="choose">Choose an image</div>
+            <div class="sub-t" data-i18n="drop">or drop a file here</div>
+          </div>
+        </div>
+        <input type="file" id="fileInput" accept="image/*">
+        <div class="stage-foot">
+          <span data-i18n="local">Processed locally in your browser — nothing is uploaded.</span>
+          <span id="dims"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="field">
+        <div class="field-label">
+          <span data-i18n="blockSize">Block size</span>
+          <span class="val" id="pixelSizeVal">8</span>
+        </div>
+        <input type="range" id="pixelSize" min="2" max="40" value="8">
+      </div>
+
+      <div class="field">
+        <div class="field-label">
+          <span data-i18n="colors">Colors</span>
+          <span class="val" id="colorCountVal">5</span>
+        </div>
+        <input type="range" id="colorCount" min="2" max="10" value="5">
+      </div>
+
+      <div class="field">
+        <div class="field-label"><span data-i18n="palette">Palette</span></div>
+        <div class="palette" id="palette"></div>
+      </div>
+
+      <div class="field">
+        <div class="btn-row">
+          <button id="bwBtn" data-i18n="bw">B&amp;W</button>
+          <button id="resetBtn" data-i18n="reset">Reset</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label"><span data-i18n="myPalettes">Saved palettes</span></div>
+        <div class="save-row">
+          <input type="text" id="paletteNameInput" maxlength="24" data-i18n-ph="paletteNamePlaceholder" placeholder="Palette name">
+          <button id="savePaletteBtn" data-i18n="save">Save</button>
+        </div>
+        <div class="saved-list" id="savedPalettesList"></div>
+      </div>
+
+      <div class="field">
+        <div class="btn-row">
+          <button class="primary" id="downloadBtn" disabled data-i18n="download">Download PNG</button>
+        </div>
+      </div>
+
+      <div class="note" data-i18n="hint">
+        Tip: click any swatch in the palette to pick a different color — the image updates instantly, block shapes stay the same.
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+/* ---------- i18n ---------- */
+const i18n = {
+  en:{
+    tagline:"your photo, redrawn in blocks and a handful of colors",
+    choose:"Choose an image",
+    drop:"or drop a file here",
+    local:"Processed locally in your browser — nothing is uploaded.",
+    blockSize:"Block size",
+    colors:"Colors",
+    palette:"Palette",
+    bw:"B&W",
+    undo:"Undo",
+    redo:"Redo",
+    reset:"Reset",
+    download:"Download PNG",
+    myPalettes:"Saved palettes",
+    paletteNamePlaceholder:"Palette name",
+    save:"Save",
+    noSaved:"No saved palettes yet.",
+    untitled:"Palette",
+    hint:"Tip: click any swatch in the palette to pick a different color — the image updates instantly, block shapes stay the same."
+  },
+  ru:{
+    tagline:"ваше фото, собранное заново из блоков и нескольких цветов",
+    choose:"Выберите изображение",
+    drop:"или перетащите файл сюда",
+    local:"Обработка происходит локально в браузере — файлы никуда не отправляются.",
+    blockSize:"Размер блока",
+    colors:"Цвета",
+    palette:"Палитра",
+    bw:"Ч/Б",
+    undo:"Назад",
+    redo:"Вперёд",
+    reset:"Сбросить",
+    download:"Скачать PNG",
+    myPalettes:"Сохранённые палитры",
+    paletteNamePlaceholder:"Название палитры",
+    save:"Сохранить",
+    noSaved:"Пока нет сохранённых палитр.",
+    untitled:"Палитра",
+    hint:"Совет: нажмите на любой цвет в палитре, чтобы заменить его на другой — картинка обновится сразу, форма блоков останется прежней."
+  }
+};
+let currentLang = 'en';
+function setLang(lang){
+  currentLang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const key = el.getAttribute('data-i18n');
+    if(i18n[lang][key]) el.textContent = i18n[lang][key];
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{
+    const key = el.getAttribute('data-i18n-ph');
+    if(i18n[lang][key]) el.placeholder = i18n[lang][key];
+  });
+  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active', b.dataset.lang===lang));
+  document.documentElement.lang = lang;
+  if(typeof renderSavedPalettes === 'function') renderSavedPalettes();
+}
+document.querySelectorAll('.lang-btn').forEach(b=>{
+  b.addEventListener('click', ()=>setLang(b.dataset.lang));
+});
+
+/* ---------- header sprite (decorative pixel mark) ---------- */
+const spriteMap = [
+  0,0,0,1,1,0,0,0,
+  0,0,0,1,1,0,0,0,
+  0,1,1,1,1,1,1,0,
+  1,1,1,1,1,1,1,1,
+  1,1,1,1,1,1,1,1,
+  0,1,1,1,1,1,1,0,
+  0,0,0,1,1,0,0,0,
+  0,0,0,1,1,0,0,0
+];
+const spriteEl = document.getElementById('sprite');
+spriteMap.forEach(v=>{
+  const i = document.createElement('i');
+  if(v) i.classList.add('on');
+  spriteEl.appendChild(i);
+});
+
+/* ---------- state ---------- */
+const MAX_DIM = 640;
+let baseW=0, baseH=0;
+let smallW=0, smallH=0;
+let srcPixels=null;    // Float32Array-ish array of [r,g,b] per small pixel, length smallW*smallH*3
+let indices=null;      // Uint8Array length smallW*smallH -> palette index
+let palette=[];        // array of [r,g,b]
+let overridden=[];     // per-entry: true once the user manually sets a custom color (stays that color even in B&W)
+let hasImage=false;
+
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const outCanvas = document.getElementById('outCanvas');
+const outCtx = outCanvas.getContext('2d');
+const dimsEl = document.getElementById('dims');
+const pixelSizeInput = document.getElementById('pixelSize');
+const colorCountInput = document.getElementById('colorCount');
+const pixelSizeVal = document.getElementById('pixelSizeVal');
+const colorCountVal = document.getElementById('colorCountVal');
+const paletteEl = document.getElementById('palette');
+const downloadBtn = document.getElementById('downloadBtn');
+const bwBtn = document.getElementById('bwBtn');
+const resetBtn = document.getElementById('resetBtn');
+const undoBtn = document.getElementById('undoBtn');
+const redoBtn = document.getElementById('redoBtn');
+let bwMode = false;
+
+/* offscreen canvases */
+const baseCanvas = document.createElement('canvas');
+const baseCtx = baseCanvas.getContext('2d');
+const smallCanvas = document.createElement('canvas');
+const smallCtx = smallCanvas.getContext('2d', { willReadFrequently:true });
+
+/* ---------- upload handling ---------- */
+dropzone.addEventListener('click', ()=> fileInput.click());
+fileInput.addEventListener('change', e=>{
+  if(e.target.files && e.target.files[0]) loadFile(e.target.files[0]);
+});
+['dragenter','dragover'].forEach(ev=>{
+  dropzone.addEventListener(ev, e=>{ e.preventDefault(); dropzone.classList.add('drag'); });
+});
+['dragleave','drop'].forEach(ev=>{
+  dropzone.addEventListener(ev, e=>{ e.preventDefault(); dropzone.classList.remove('drag'); });
+});
+dropzone.addEventListener('drop', e=>{
+  const f = e.dataTransfer.files && e.dataTransfer.files[0];
+  if(f) loadFile(f);
+});
+
+document.addEventListener('paste', e=>{
+  const items = e.clipboardData && e.clipboardData.items;
+  if(!items) return;
+  for(const item of items){
+    if(item.type && item.type.startsWith('image/')){
+      const file = item.getAsFile();
+      if(file){ loadFile(file); e.preventDefault(); break; }
+    }
+  }
+});
+
+function loadFile(file){
+  if(!file.type.startsWith('image/')) return;
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = ()=>{
+    initFromImage(img);
+    URL.revokeObjectURL(url);
+  };
+  img.src = url;
+}
+
+function initFromImage(img){
+  const ratio = Math.min(MAX_DIM/img.width, MAX_DIM/img.height, 1);
+  baseW = Math.max(1, Math.round(img.width*ratio));
+  baseH = Math.max(1, Math.round(img.height*ratio));
+  baseCanvas.width = baseW;
+  baseCanvas.height = baseH;
+  baseCtx.imageSmoothingEnabled = true;
+  baseCtx.clearRect(0,0,baseW,baseH);
+  baseCtx.drawImage(img, 0, 0, baseW, baseH);
+
+  outCanvas.width = baseW;
+  outCanvas.height = baseH;
+  dimsEl.textContent = img.width + '×' + img.height;
+
+  hasImage = true;
+  dropzone.classList.add('has-image');
+  downloadBtn.disabled = false;
+
+  recompute();
+  resetHistory();
+  pushHistory();
+}
+
+/* ---------- pixelation + quantization ---------- */
+function recompute(){
+  if(!hasImage) return;
+  const pixelSize = parseInt(pixelSizeInput.value, 10);
+  smallW = Math.max(1, Math.round(baseW/pixelSize));
+  smallH = Math.max(1, Math.round(baseH/pixelSize));
+
+  smallCanvas.width = smallW;
+  smallCanvas.height = smallH;
+  smallCtx.imageSmoothingEnabled = true;
+  smallCtx.clearRect(0,0,smallW,smallH);
+  smallCtx.drawImage(baseCanvas, 0, 0, baseW, baseH, 0, 0, smallW, smallH);
+
+  const imgData = smallCtx.getImageData(0,0,smallW,smallH);
+  const n = smallW*smallH;
+  srcPixels = new Float32Array(n*3);
+  for(let i=0;i<n;i++){
+    srcPixels[i*3]   = imgData.data[i*4];
+    srcPixels[i*3+1] = imgData.data[i*4+1];
+    srcPixels[i*3+2] = imgData.data[i*4+2];
+  }
+
+  quantize();
+}
+
+function deterministicSeeds(k, n){
+  // farthest-point sampling starting from a fixed pixel: always the same
+  // result for the same image and same k, so re-running it (e.g. by
+  // dragging a slider back and forth) never reshuffles the palette.
+  const seeds = [0];
+  const distSq = new Float64Array(n).fill(Infinity);
+  for(let s=1; s<k; s++){
+    const last = seeds[seeds.length-1];
+    const lr = srcPixels[last*3], lg = srcPixels[last*3+1], lb = srcPixels[last*3+2];
+    let bestIdx = 0, bestDist = -1;
+    for(let i=0; i<n; i++){
+      const dr = srcPixels[i*3]-lr, dg = srcPixels[i*3+1]-lg, db = srcPixels[i*3+2]-lb;
+      const d = dr*dr+dg*dg+db*db;
+      if(d < distSq[i]) distSq[i] = d;
+      if(distSq[i] > bestDist){ bestDist = distSq[i]; bestIdx = i; }
+    }
+    seeds.push(bestIdx);
+  }
+  return seeds;
+}
+
+function quantize(){
+  const k = parseInt(colorCountInput.value, 10);
+  const n = smallW*smallH;
+  const kEff = Math.min(k, n);
+
+  const seedIdx = deterministicSeeds(kEff, n);
+  let centroids = seedIdx.map(idx=>[srcPixels[idx*3], srcPixels[idx*3+1], srcPixels[idx*3+2]]);
+
+  const assign = new Uint8Array(n);
+  const ITER = 8;
+  for(let iter=0; iter<ITER; iter++){
+    const sums = centroids.map(()=>[0,0,0,0]);
+    for(let i=0;i<n;i++){
+      const r = srcPixels[i*3], g = srcPixels[i*3+1], b = srcPixels[i*3+2];
+      let best=0, bestD=Infinity;
+      for(let c=0;c<centroids.length;c++){
+        const cc = centroids[c];
+        const dr=r-cc[0], dg=g-cc[1], db=b-cc[2];
+        const d = dr*dr+dg*dg+db*db;
+        if(d<bestD){ bestD=d; best=c; }
+      }
+      assign[i]=best;
+      sums[best][0]+=r; sums[best][1]+=g; sums[best][2]+=b; sums[best][3]++;
+    }
+    for(let c=0;c<centroids.length;c++){
+      if(sums[c][3]>0){
+        centroids[c]=[sums[c][0]/sums[c][3], sums[c][1]/sums[c][3], sums[c][2]/sums[c][3]];
+      }
+    }
+  }
+
+  palette = centroids.map(c=>c.map(v=>Math.max(0,Math.min(255,Math.round(v)))));
+  // sort palette by luminance for a calmer swatch order
+  const order = palette.map((c,i)=>i).sort((a,b)=>{
+    const la = 0.299*palette[a][0]+0.587*palette[a][1]+0.114*palette[a][2];
+    const lb = 0.299*palette[b][0]+0.587*palette[b][1]+0.114*palette[b][2];
+    return la-lb;
+  });
+  const remap = new Array(palette.length);
+  order.forEach((origIdx, newIdx)=> remap[origIdx]=newIdx );
+  const newPalette = order.map(i=>palette[i]);
+  const newIndices = new Uint8Array(n);
+  for(let i=0;i<n;i++) newIndices[i] = remap[assign[i]];
+
+  palette = newPalette;
+  indices = newIndices;
+  overridden = new Array(palette.length).fill(false);
+
+  renderPalette();
+  render();
+}
+
+function render(){
+  const imgData = smallCtx.createImageData(smallW, smallH);
+  const drawPalette = palette.map((c,i)=> (bwMode && !overridden[i]) ? grayscale(c) : c);
+  for(let i=0;i<smallW*smallH;i++){
+    const c = drawPalette[indices[i]];
+    imgData.data[i*4]   = c[0];
+    imgData.data[i*4+1] = c[1];
+    imgData.data[i*4+2] = c[2];
+    imgData.data[i*4+3] = 255;
+  }
+  smallCtx.putImageData(imgData, 0, 0);
+
+  outCtx.imageSmoothingEnabled = false;
+  outCtx.clearRect(0,0,baseW,baseH);
+  outCtx.drawImage(smallCanvas, 0, 0, smallW, smallH, 0, 0, baseW, baseH);
+}
+
+function renderPalette(){
+  paletteEl.innerHTML = '';
+  palette.forEach((c, i)=>{
+    const displayColor = (bwMode && !overridden[i]) ? grayscale(c) : c;
+    const hex = rgbToHex(displayColor);
+    const wrap = document.createElement('div');
+    wrap.className = 'swatch';
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.value = hex;
+    input.addEventListener('input', ()=>{
+      palette[i] = hexToRgb(input.value);
+      overridden[i] = true;
+      hexSpan.textContent = input.value;
+      render();
+    });
+    input.addEventListener('change', pushHistory);
+    const hexSpan = document.createElement('span');
+    hexSpan.className = 'hex';
+    hexSpan.textContent = hex;
+    wrap.appendChild(input);
+    wrap.appendChild(hexSpan);
+    if(palette.length > 2){
+      const del = document.createElement('span');
+      del.className = 'swatch-del';
+      del.textContent = '\u00d7';
+      del.addEventListener('click', ()=> deleteColor(i));
+      wrap.appendChild(del);
+    }
+    paletteEl.appendChild(wrap);
+  });
+}
+
+function deleteColor(i){
+  if(palette.length <= 2) return;
+  const removed = palette[i];
+  let nearestIdx = -1, nearestDist = Infinity;
+  for(let j=0; j<palette.length; j++){
+    if(j===i) continue;
+    const c = palette[j];
+    const d = (c[0]-removed[0])**2 + (c[1]-removed[1])**2 + (c[2]-removed[2])**2;
+    if(d < nearestDist){ nearestDist = d; nearestIdx = j; }
+  }
+  for(let k=0; k<indices.length; k++){
+    if(indices[k] === i) indices[k] = nearestIdx;
+  }
+  for(let k=0; k<indices.length; k++){
+    if(indices[k] > i) indices[k] -= 1;
+  }
+  palette.splice(i, 1);
+  overridden.splice(i, 1);
+  colorCountInput.value = palette.length;
+  colorCountVal.textContent = palette.length;
+  renderPalette();
+  render();
+  pushHistory();
+}
+
+function grayscale(c){
+  const l = Math.round(0.299*c[0] + 0.587*c[1] + 0.114*c[2]);
+  return [l,l,l];
+}
+
+/* ---------- named saved palettes (persisted in this browser) ---------- */
+const SAVE_KEY = 'pixelate_saved_palettes_v1';
+function loadSavedPalettes(){
+  try{
+    const raw = localStorage.getItem(SAVE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+function persistSavedPalettes(){
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify(savedPalettes)); }catch(e){}
+}
+let savedPalettes = loadSavedPalettes();
+
+function renderSavedPalettes(){
+  const wrap = document.getElementById('savedPalettesList');
+  if(!wrap) return;
+  wrap.innerHTML = '';
+  if(savedPalettes.length === 0){
+    const empty = document.createElement('div');
+    empty.className = 'saved-empty';
+    empty.textContent = i18n[currentLang].noSaved;
+    wrap.appendChild(empty);
+    return;
+  }
+  savedPalettes.forEach((p, idx)=>{
+    const chip = document.createElement('div');
+    chip.className = 'saved-chip';
+    chip.title = p.colors.length + (currentLang==='ru' ? ' цветов' : ' colors');
+
+    const dots = document.createElement('div');
+    dots.className = 'saved-dots';
+    p.colors.forEach(c=>{
+      const d = document.createElement('span');
+      d.style.background = rgbToHex(c);
+      dots.appendChild(d);
+    });
+
+    const label = document.createElement('span');
+    label.className = 'saved-name';
+    label.textContent = p.name;
+
+    const del = document.createElement('span');
+    del.className = 'saved-del';
+    del.textContent = '\u00d7';
+    del.addEventListener('click', e=>{
+      e.stopPropagation();
+      savedPalettes.splice(idx,1);
+      persistSavedPalettes();
+      renderSavedPalettes();
+    });
+
+    chip.appendChild(dots);
+    chip.appendChild(label);
+    chip.appendChild(del);
+    chip.addEventListener('click', ()=> applySavedPalette(p));
+    wrap.appendChild(chip);
+  });
+}
+
+function applySavedPalette(p){
+  if(!hasImage || !p.colors || p.colors.length === 0) return;
+  const k = Math.max(2, Math.min(10, p.colors.length));
+  colorCountInput.value = k;
+  colorCountVal.textContent = k;
+  quantize(); // fresh, deterministic clustering for k colors, matched to the current image
+  for(let i=0; i<palette.length; i++){
+    if(p.colors[i]) palette[i] = p.colors[i].slice();
+  }
+  overridden = overridden.map(()=>true); // saved colors always show as-is, even in B&W
+  renderPalette();
+  render();
+  pushHistory();
+}
+
+function savePalette(){
+  if(!hasImage) return;
+  const nameInput = document.getElementById('paletteNameInput');
+  let name = nameInput.value.trim();
+  if(!name) name = i18n[currentLang].untitled + ' ' + (savedPalettes.length+1);
+  savedPalettes.push({ name, colors: palette.map(c=>c.slice()) });
+  persistSavedPalettes();
+  nameInput.value = '';
+  renderSavedPalettes();
+}
+
+document.getElementById('savePaletteBtn').addEventListener('click', savePalette);
+document.getElementById('paletteNameInput').addEventListener('keydown', e=>{
+  if(e.key === 'Enter') savePalette();
+});
+renderSavedPalettes();
+
+function rgbToHex(c){
+  return '#' + c.map(v=>v.toString(16).padStart(2,'0')).join('');
+}
+function hexToRgb(hex){
+  const v = hex.replace('#','');
+  return [parseInt(v.substr(0,2),16), parseInt(v.substr(2,2),16), parseInt(v.substr(4,2),16)];
+}
+
+/* ---------- undo / redo history ---------- */
+let history = [];
+let historyIndex = -1;
+let restoringState = false;
+
+function snapshotState(){
+  return {
+    pixelSize: pixelSizeInput.value,
+    colorCount: colorCountInput.value,
+    smallW, smallH,
+    indices: indices.slice(),
+    palette: palette.map(c=>c.slice()),
+    overridden: overridden.slice(),
+    bwMode
+  };
+}
+function pushHistory(){
+  if(restoringState || !hasImage) return;
+  history = history.slice(0, historyIndex+1);
+  history.push(snapshotState());
+  historyIndex = history.length-1;
+  updateHistoryButtons();
+}
+function restoreState(state){
+  restoringState = true;
+  pixelSizeInput.value = state.pixelSize;
+  pixelSizeVal.textContent = state.pixelSize;
+  colorCountInput.value = state.colorCount;
+  colorCountVal.textContent = state.colorCount;
+  smallW = state.smallW;
+  smallH = state.smallH;
+  smallCanvas.width = smallW;
+  smallCanvas.height = smallH;
+  indices = state.indices.slice();
+  palette = state.palette.map(c=>c.slice());
+  overridden = state.overridden.slice();
+  bwMode = state.bwMode;
+  bwBtn.classList.toggle('toggled', bwMode);
+  renderPalette();
+  render();
+  restoringState = false;
+}
+function undo(){
+  if(historyIndex <= 0) return;
+  historyIndex--;
+  restoreState(history[historyIndex]);
+  updateHistoryButtons();
+}
+function redo(){
+  if(historyIndex >= history.length-1) return;
+  historyIndex++;
+  restoreState(history[historyIndex]);
+  updateHistoryButtons();
+}
+function updateHistoryButtons(){
+  undoBtn.disabled = historyIndex <= 0;
+  redoBtn.disabled = historyIndex >= history.length-1;
+}
+function resetHistory(){
+  history = [];
+  historyIndex = -1;
+  updateHistoryButtons();
+}
+undoBtn.addEventListener('click', undo);
+redoBtn.addEventListener('click', redo);
+window.addEventListener('keydown', e=>{
+  const mod = e.ctrlKey || e.metaKey;
+  if(!mod) return;
+  if(e.key.toLowerCase() === 'z' && !e.shiftKey){ e.preventDefault(); undo(); }
+  else if(e.key.toLowerCase() === 'y' || (e.key.toLowerCase()==='z' && e.shiftKey)){ e.preventDefault(); redo(); }
+});
+
+/* ---------- controls ---------- */
+pixelSizeInput.addEventListener('input', ()=>{
+  pixelSizeVal.textContent = pixelSizeInput.value;
+  recompute();
+});
+pixelSizeInput.addEventListener('change', pushHistory);
+colorCountInput.addEventListener('input', ()=>{
+  colorCountVal.textContent = colorCountInput.value;
+  if(hasImage) quantize();
+});
+colorCountInput.addEventListener('change', pushHistory);
+bwBtn.addEventListener('click', ()=>{
+  bwMode = !bwMode;
+  bwBtn.classList.toggle('toggled', bwMode);
+  if(hasImage){ renderPalette(); render(); pushHistory(); }
+});
+resetBtn.addEventListener('click', ()=>{
+  hasImage = false;
+  bwMode = false;
+  bwBtn.classList.remove('toggled');
+  dropzone.classList.remove('has-image');
+  downloadBtn.disabled = true;
+  dimsEl.textContent = '';
+  paletteEl.innerHTML = '';
+  fileInput.value = '';
+  resetHistory();
+});
+downloadBtn.addEventListener('click', ()=>{
+  if(!hasImage) return;
+  const scale = Math.max(1, Math.round(1200/baseW));
+  const exportCanvas = document.createElement('canvas');
+  exportCanvas.width = baseW*scale;
+  exportCanvas.height = baseH*scale;
+  const ectx = exportCanvas.getContext('2d');
+  ectx.imageSmoothingEnabled = false;
+  ectx.drawImage(smallCanvas, 0, 0, smallW, smallH, 0, 0, exportCanvas.width, exportCanvas.height);
+  const a = document.createElement('a');
+  a.download = 'pixel-art.png';
+  a.href = exportCanvas.toDataURL('image/png');
+  a.click();
+});
+</script>
+</body>
+</html>

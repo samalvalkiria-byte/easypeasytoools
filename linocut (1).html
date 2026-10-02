@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IMPRINT — turn a photo into a linocut print</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,340;0,9..144,560;0,9..144,680;0,9..144,900;1,9..144,500&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #f1efe9;
+    --panel: #fbfaf7;
+    --ink: #0d0d0c;
+    --line: #c9c4b6;
+    --line-soft: #ddd8cb;
+    --muted: #7a7568;
+  }
+
+  *{ box-sizing:border-box; }
+
+  html,body{
+    margin:0; padding:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Fraunces', serif;
+  }
+
+  body{
+    background-image: radial-gradient(rgba(13,13,12,0.045) 0.6px, transparent 0.6px);
+    background-size: 4px 4px;
+  }
+
+  .wrap{
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 40px 32px 120px;
+  }
+
+  /* ---- top row ---- */
+  .toprow{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    padding-bottom: 26px;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .eyebrow b{ color: var(--ink); font-weight:600; }
+
+  .locale{
+    display:flex;
+    border: 1px solid var(--ink);
+    height: fit-content;
+  }
+  .locale button{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    background: transparent;
+    border: none;
+    padding: 7px 12px;
+    color: var(--ink);
+    cursor:pointer;
+    border-right: 1px solid var(--ink);
+  }
+  .locale button:last-child{ border-right:none; }
+  .locale button.active{ background: var(--ink); color: var(--panel); }
+
+  /* ---- hero ---- */
+  .hero{
+    display:grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding-bottom: 40px;
+  }
+
+  h1{
+    margin:0;
+    font-family:'Fraunces', serif;
+    font-weight: 900;
+    font-size: clamp(3.6rem, 11vw, 8.4rem);
+    line-height: 0.86;
+    letter-spacing: -0.025em;
+  }
+
+  .subtitle{
+    font-style: italic;
+    font-weight: 500;
+    font-size: clamp(1.05rem, 2vw, 1.3rem);
+    color: #3a362c;
+    max-width: 46ch;
+    line-height: 1.4;
+    margin-top: 14px;
+  }
+
+  .hero-foot{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    margin-top: 26px;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+
+  .note-small{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 0.76rem;
+    color: var(--muted);
+    max-width: 42ch;
+    line-height:1.5;
+  }
+
+  .rule{
+    height:1px;
+    background: var(--ink);
+    margin: 0 0 40px;
+  }
+
+  /* ---- stage ---- */
+  .stage{
+    border: 1px solid var(--ink);
+    background: var(--panel);
+  }
+
+  .canvas-holder{
+    position: relative;
+    width: 100%;
+    background: #ffffff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    min-height: 380px;
+  }
+
+  canvas{ display:block; max-width:100%; max-height: 82vh; width:auto; height:auto; }
+  #srcCanvas{ display:none; }
+
+  .dropzone{
+    width:100%;
+    padding: 100px 20px;
+    text-align:center;
+    cursor:pointer;
+    color: var(--muted);
+  }
+  .dropzone.drag{ background: rgba(13,13,12,0.04); }
+
+  .dropzone .glyph{ width: 40px; height: 40px; margin: 0 auto 22px; display:block; }
+
+  .dropzone .dz-title{
+    font-family:'Fraunces', serif;
+    font-weight: 680;
+    font-size: 1.6rem;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+  .dropzone .dz-sub{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+  }
+
+  input[type=file]{ display:none; }
+
+  .stage-foot{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding: 16px 20px;
+    border-top: 1px solid var(--ink);
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 0.74rem;
+    color: var(--muted);
+    letter-spacing: 0.03em;
+  }
+
+  /* ---- controls ---- */
+  .panel{ margin-top: 46px; display:none; }
+  .panel.show{ display:block; }
+
+  .panel-rule{
+    height:1px;
+    background: var(--line);
+    margin-bottom: 30px;
+  }
+
+  .ctrl-grid{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 30px 40px;
+    padding-bottom: 34px;
+  }
+  @media (max-width: 900px){ .ctrl-grid{ grid-template-columns: repeat(2, 1fr);} }
+  @media (max-width: 520px){ .ctrl-grid{ grid-template-columns: 1fr;} }
+
+  .ctrl label{
+    display:flex;
+    justify-content:space-between;
+    font-family:'IBM Plex Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .ctrl label span.val{
+    font-family:'Fraunces', serif;
+    font-weight: 680;
+    font-style: normal;
+    font-size: 0.95rem;
+    color: var(--ink);
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  input[type=range]{
+    -webkit-appearance:none;
+    width:100%;
+    height: 1px;
+    background: var(--ink);
+    outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:12px; height:12px;
+    border-radius:0;
+    background: var(--ink);
+    cursor:pointer;
+    margin-top:0;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:12px; height:12px;
+    border-radius:0;
+    background: var(--ink);
+    border:none;
+    cursor:pointer;
+  }
+
+  .row-split{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    flex-wrap: wrap;
+    gap: 30px;
+    padding-bottom: 34px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 34px;
+  }
+
+  .field-label{
+    font-family:'IBM Plex Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-bottom: 14px;
+    display:block;
+  }
+
+  .seg{
+    display:flex;
+    border: 1px solid var(--ink);
+    width: fit-content;
+  }
+  .seg button{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 0.74rem;
+    letter-spacing: 0.03em;
+    background: transparent;
+    border: none;
+    padding: 10px 16px;
+    color: var(--ink);
+    cursor:pointer;
+    border-right: 1px solid var(--ink);
+  }
+  .seg button:last-child{ border-right:none; }
+  .seg button.active{ background: var(--ink); color: var(--panel); }
+
+  .toggles{ display:flex; gap: 28px; flex-wrap: wrap; }
+  .toggle{
+    display:flex; align-items:center; gap: 9px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--ink);
+    cursor:pointer; user-select:none;
+  }
+  .toggle input{ accent-color: var(--ink); width:14px; height:14px; }
+
+  .actions{ display:flex; gap: 12px; flex-wrap: wrap; }
+
+  button.btn{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    padding: 15px 26px;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--panel);
+    cursor:pointer;
+    border-radius:0;
+  }
+  button.btn:hover{ background: #2b2a26; }
+  button.btn.ghost{ background: transparent; color: var(--ink); }
+  button.btn.ghost:hover{ background: rgba(13,13,12,0.06); }
+
+  footer{
+    margin-top: 70px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    display:flex;
+    justify-content:space-between;
+    border-top: 1px solid var(--line);
+    padding-top: 18px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="toprow">
+    <span class="eyebrow" id="t-eyebrow">photo <b>·</b> linocut <b>·</b> in your browser</span>
+    <div class="locale">
+      <button id="langEn" class="active" data-lang="en">EN</button>
+      <button id="langRu" data-lang="ru">RU</button>
+    </div>
+  </div>
+
+  <div class="hero">
+    <h1 id="t-title">IMPRINT</h1>
+    <p class="subtitle" id="t-subtitle">A photo, cut into a linoleum block and pressed onto paper — black on white, no in-between tones.</p>
+    <div class="hero-foot">
+      <p class="note-small" id="t-note">Everything runs locally in your browser. Nothing is uploaded or stored anywhere.</p>
+    </div>
+  </div>
+
+  <div class="rule"></div>
+
+  <div class="stage">
+    <div class="canvas-holder" id="canvasHolder">
+      <div class="dropzone" id="dropzone">
+        <svg class="glyph" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M24 6V32M24 6L14 16M24 6L34 16" stroke="#0d0d0c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M8 32V38C8 40.2 9.8 42 12 42H36C38.2 42 40 40.2 40 38V32" stroke="#0d0d0c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="dz-title" id="t-dztitle">Drop a photo here</div>
+        <div class="dz-sub" id="t-dzsub">or click to choose a file — JPG, PNG, WEBP</div>
+      </div>
+      <canvas id="srcCanvas"></canvas>
+      <canvas id="outCanvas"></canvas>
+    </div>
+    <div class="stage-foot" id="stageFoot" style="display:none;">
+      <span id="dimsLabel">—</span>
+      <span id="statusLabel">print ready</span>
+    </div>
+  </div>
+
+  <input type="file" id="fileInput" accept="image/*">
+
+  <div class="panel" id="panel">
+    <div class="panel-rule"></div>
+
+    <div class="ctrl-grid">
+      <div class="ctrl">
+        <label id="t-lbl-spacing">Line density <span class="val" id="spacingVal">7</span></label>
+        <input type="range" id="spacing" min="3" max="14" step="1" value="7">
+      </div>
+      <div class="ctrl">
+        <label id="t-lbl-width">Blade width <span class="val" id="widthVal">1.1</span></label>
+        <input type="range" id="lineWidth" min="0.6" max="3" step="0.1" value="1.1">
+      </div>
+      <div class="ctrl">
+        <label id="t-lbl-contrast">Contrast <span class="val" id="contrastVal">15</span></label>
+        <input type="range" id="contrast" min="-60" max="80" step="1" value="15">
+      </div>
+      <div class="ctrl">
+        <label id="t-lbl-wave">Line curl <span class="val" id="waveVal">40</span></label>
+        <input type="range" id="wave" min="0" max="100" step="1" value="40">
+      </div>
+    </div>
+
+    <div class="row-split">
+      <div>
+        <span class="field-label" id="t-lbl-direction">Cutting direction</span>
+        <div class="seg" id="angleSeg">
+          <button data-angle="0" class="active" id="t-ang-h">horizontal</button>
+          <button data-angle="90" id="t-ang-v">vertical</button>
+          <button data-angle="45" id="t-ang-d1">diagonal ↗</button>
+          <button data-angle="135" id="t-ang-d2">diagonal ↖</button>
+        </div>
+      </div>
+      <div>
+        <span class="field-label" id="t-lbl-params">Settings</span>
+        <div class="toggles">
+          <label class="toggle"><input type="checkbox" id="crosshatch" checked> <span id="t-tog-cross">crosshatch shadows</span></label>
+          <label class="toggle"><input type="checkbox" id="invert"> <span id="t-tog-invert">invert</span></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" id="downloadBtn">Download print (PNG)</button>
+      <button class="btn ghost" id="newImgBtn">Load another photo</button>
+    </div>
+  </div>
+
+  <footer>
+    <span id="t-foot1">imprint is a static page — no server, no internet required</span>
+    <span id="t-foot2">black · white · blade</span>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  const I18N = {
+    en: {
+      eyebrow: 'photo <b>·</b> linocut <b>·</b> in your browser',
+      title: 'IMPRINT',
+      subtitle: 'A photo, cut into a linoleum block and pressed onto paper — black on white, no in-between tones.',
+      note: 'Everything runs locally in your browser. Nothing is uploaded or stored anywhere.',
+      dztitle: 'Drop a photo here',
+      dzsub: 'or click to choose a file — JPG, PNG, WEBP',
+      status: 'print ready',
+      lblSpacing: 'Line density',
+      lblWidth: 'Blade width',
+      lblContrast: 'Contrast',
+      lblWave: 'Line curl',
+      lblDirection: 'Cutting direction',
+      angH: 'horizontal', angV: 'vertical', angD1: 'diagonal ↗', angD2: 'diagonal ↖',
+      lblParams: 'Settings',
+      togCross: 'crosshatch shadows',
+      togInvert: 'invert',
+      downloadBtn: 'Download print (PNG)',
+      newImgBtn: 'Load another photo',
+      foot1: 'imprint is a static page — no server, no internet required',
+      foot2: 'black · white · blade',
+      filename: 'imprint.png',
+      dimsSep: ' × ', dimsUnit: ' px'
+    },
+    ru: {
+      eyebrow: 'фото <b>·</b> линогравюра <b>·</b> в браузере',
+      title: 'ОТТИСК',
+      subtitle: 'Снимок, вырезанный резцом на линолеуме и оттиснутый на бумагу — чёрным по белому, без полутонов.',
+      note: 'Обработка идёт локально в вашем браузере. Файлы никуда не отправляются и нигде не сохраняются.',
+      dztitle: 'Перетащите фотографию',
+      dzsub: 'или нажмите, чтобы выбрать файл — JPG, PNG, WEBP',
+      status: 'оттиск готов',
+      lblSpacing: 'Плотность линий',
+      lblWidth: 'Толщина резца',
+      lblContrast: 'Контраст',
+      lblWave: 'Изгиб штриха',
+      lblDirection: 'Направление резца',
+      angH: 'горизонталь', angV: 'вертикаль', angD1: 'диагональ ↗', angD2: 'диагональ ↖',
+      lblParams: 'Параметры',
+      togCross: 'перекрёстная штриховка',
+      togInvert: 'негатив',
+      downloadBtn: 'Скачать оттиск (PNG)',
+      newImgBtn: 'Загрузить другое фото',
+      foot1: 'оттиск — статическая страница, работает без сервера и интернета',
+      foot2: 'чёрное · белое · резец',
+      filename: 'ottisk.png',
+      dimsSep: ' × ', dimsUnit: ' px'
+    }
+  };
+
+  let lang = 'en';
+
+  function applyLang(){
+    const t = I18N[lang];
+    document.documentElement.lang = lang;
+    document.getElementById('t-eyebrow').innerHTML = t.eyebrow;
+    document.getElementById('t-title').textContent = t.title;
+    document.getElementById('t-subtitle').textContent = t.subtitle;
+    document.getElementById('t-note').textContent = t.note;
+    document.getElementById('t-dztitle').textContent = t.dztitle;
+    document.getElementById('t-dzsub').textContent = t.dzsub;
+    document.getElementById('statusLabel').textContent = t.status;
+
+    document.getElementById('t-lbl-spacing').childNodes[0].nodeValue = t.lblSpacing + ' ';
+    document.getElementById('t-lbl-width').childNodes[0].nodeValue = t.lblWidth + ' ';
+    document.getElementById('t-lbl-contrast').childNodes[0].nodeValue = t.lblContrast + ' ';
+    document.getElementById('t-lbl-wave').childNodes[0].nodeValue = t.lblWave + ' ';
+
+    document.getElementById('t-lbl-direction').textContent = t.lblDirection;
+    document.getElementById('t-ang-h').textContent = t.angH;
+    document.getElementById('t-ang-v').textContent = t.angV;
+    document.getElementById('t-ang-d1').textContent = t.angD1;
+    document.getElementById('t-ang-d2').textContent = t.angD2;
+    document.getElementById('t-lbl-params').textContent = t.lblParams;
+    document.getElementById('t-tog-cross').textContent = t.togCross;
+    document.getElementById('t-tog-invert').textContent = t.togInvert;
+    document.getElementById('downloadBtn').textContent = t.downloadBtn;
+    document.getElementById('newImgBtn').textContent = t.newImgBtn;
+    document.getElementById('t-foot1').textContent = t.foot1;
+    document.getElementById('t-foot2').textContent = t.foot2;
+
+    document.title = lang === 'ru' ? 'ОТТИСК — фото в линогравюру' : 'IMPRINT — turn a photo into a linocut print';
+
+    document.getElementById('langEn').classList.toggle('active', lang === 'en');
+    document.getElementById('langRu').classList.toggle('active', lang === 'ru');
+
+    if (imgW && imgH) {
+      dimsLabel.textContent = imgW + t.dimsSep + imgH + t.dimsUnit;
+    }
+  }
+
+  document.getElementById('langEn').addEventListener('click', ()=>{ lang='en'; applyLang(); });
+  document.getElementById('langRu').addEventListener('click', ()=>{ lang='ru'; applyLang(); });
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const canvasHolder = document.getElementById('canvasHolder');
+  const srcCanvas = document.getElementById('srcCanvas');
+  const outCanvas = document.getElementById('outCanvas');
+  const panel = document.getElementById('panel');
+  const stageFoot = document.getElementById('stageFoot');
+  const dimsLabel = document.getElementById('dimsLabel');
+  const statusLabel = document.getElementById('statusLabel');
+
+  const spacingEl = document.getElementById('spacing');
+  const lineWidthEl = document.getElementById('lineWidth');
+  const contrastEl = document.getElementById('contrast');
+  const waveEl = document.getElementById('wave');
+  const crosshatchEl = document.getElementById('crosshatch');
+  const invertEl = document.getElementById('invert');
+  const angleSeg = document.getElementById('angleSeg');
+
+  const spacingVal = document.getElementById('spacingVal');
+  const widthVal = document.getElementById('widthVal');
+  const contrastVal = document.getElementById('contrastVal');
+  const waveVal = document.getElementById('waveVal');
+
+  outCanvas.style.display = 'none';
+
+  let grayData = null;
+  let imgW = 0, imgH = 0;
+  let angle = 0;
+  let pending = false;
+
+  const MAX_DIM = 1100;
+
+  dropzone.addEventListener('click', ()=> fileInput.click());
+
+  ['dragenter','dragover'].forEach(evt=>{
+    dropzone.addEventListener(evt, e=>{
+      e.preventDefault(); e.stopPropagation();
+      dropzone.classList.add('drag');
+    });
+  });
+  ['dragleave','drop'].forEach(evt=>{
+    dropzone.addEventListener(evt, e=>{
+      e.preventDefault(); e.stopPropagation();
+      dropzone.classList.remove('drag');
+    });
+  });
+  dropzone.addEventListener('drop', e=>{
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) loadFile(f);
+  });
+  fileInput.addEventListener('change', e=>{
+    const f = e.target.files && e.target.files[0];
+    if (f) loadFile(f);
+  });
+
+  function loadFile(file){
+    if (!file.type.startsWith('image/')) return;
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = function(){
+      prepareImage(img);
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  }
+
+  function prepareImage(img){
+    let w = img.naturalWidth, h = img.naturalHeight;
+    const scale = Math.min(1, MAX_DIM / Math.max(w, h));
+    w = Math.round(w * scale);
+    h = Math.round(h * scale);
+
+    srcCanvas.width = w;
+    srcCanvas.height = h;
+    const sctx = srcCanvas.getContext('2d');
+    sctx.drawImage(img, 0, 0, w, h);
+
+    const imgData = sctx.getImageData(0, 0, w, h);
+    const d = imgData.data;
+    const gray = new Float32Array(w * h);
+    for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+      const lum = (0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2]) / 255;
+      gray[p] = lum;
+    }
+
+    grayData = gray;
+    imgW = w; imgH = h;
+
+    dropzone.style.display = 'none';
+    outCanvas.style.display = 'block';
+    outCanvas.width = w;
+    outCanvas.height = h;
+
+    stageFoot.style.display = 'flex';
+    dimsLabel.textContent = w + I18N[lang].dimsSep + h + I18N[lang].dimsUnit;
+    panel.classList.add('show');
+
+    render();
+  }
+
+  function sampleGray(x, y){
+    if (x < 0 || y < 0 || x >= imgW || y >= imgH) return null;
+    return grayData[(y|0) * imgW + (x|0)];
+  }
+
+  function applyContrastCurve(darkness, contrast){
+    const c = contrast / 100;
+    let t = darkness + (darkness - 0.5) * c;
+    return Math.max(0, Math.min(1, t));
+  }
+
+  function drawHatchPass(ctx, angleDeg, opts){
+    const rad = angleDeg * Math.PI / 180;
+    const dx = Math.cos(rad), dy = Math.sin(rad);
+    const nx = -Math.sin(rad), ny = Math.cos(rad);
+    const cx = imgW / 2, cy = imgH / 2;
+    const diag = Math.sqrt(imgW*imgW + imgH*imgH);
+    const halfLen = diag / 2 + 4;
+    const halfRows = Math.ceil((diag / 2) / opts.spacing) + 1;
+
+    const maxAmp = opts.spacing * opts.waveFactor;
+    const freq = 0.09 + (1 - opts.waveFactor) * 0.02;
+
+    ctx.strokeStyle = opts.strokeStyle;
+    ctx.lineWidth = opts.lineWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    for (let j = -halfRows; j <= halfRows; j++) {
+      const rowOffset = j * opts.spacing;
+      let started = false;
+      ctx.beginPath();
+      for (let u = -halfLen; u <= halfLen; u += opts.step) {
+        const bx = cx + nx * rowOffset + dx * u;
+        const by = cy + ny * rowOffset + dy * u;
+        const g = sampleGray(bx, by);
+        if (g === null) { started = false; continue; }
+
+        let darkness = 1 - g;
+        darkness = applyContrastCurve(darkness, opts.contrast);
+        if (opts.threshold !== undefined && darkness < opts.threshold) {
+          started = false;
+          continue;
+        }
+
+        const amp = darkness * maxAmp;
+        const disp = Math.sin(u * freq + j * 0.7) * amp;
+        const px = bx + nx * disp;
+        const py = by + ny * disp;
+
+        if (!started) { ctx.moveTo(px, py); started = true; }
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+    }
+  }
+
+  function render(){
+    if (!grayData) return;
+    const ctx = outCanvas.getContext('2d');
+    ctx.clearRect(0, 0, imgW, imgH);
+
+    const invert = invertEl.checked;
+
+    const paperColor = invert ? '#0d0d0c' : '#ffffff';
+    const inkColor = invert ? '#ffffff' : '#0d0d0c';
+
+    ctx.fillStyle = paperColor;
+    ctx.fillRect(0, 0, imgW, imgH);
+
+    const spacing = parseFloat(spacingEl.value);
+    const lineWidth = parseFloat(lineWidthEl.value);
+    const contrast = parseFloat(contrastEl.value);
+    const waveFactor = parseFloat(waveEl.value) / 100 * 0.48;
+
+    drawHatchPass(ctx, angle, {
+      spacing, lineWidth, contrast, waveFactor,
+      step: 1.2,
+      strokeStyle: inkColor,
+      threshold: 0.05
+    });
+
+    if (crosshatchEl.checked) {
+      drawHatchPass(ctx, angle + 90, {
+        spacing: spacing * 1.25,
+        lineWidth: lineWidth * 0.85,
+        contrast,
+        waveFactor: waveFactor * 0.65,
+        step: 1.4,
+        strokeStyle: inkColor,
+        threshold: 0.68
+      });
+    }
+
+    statusLabel.textContent = I18N[lang].status;
+  }
+
+  function scheduleRender(){
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(()=>{ pending = false; render(); });
+  }
+
+  [spacingEl, lineWidthEl, contrastEl, waveEl].forEach(el=>{
+    el.addEventListener('input', ()=>{
+      spacingVal.textContent = spacingEl.value;
+      widthVal.textContent = parseFloat(lineWidthEl.value).toFixed(1);
+      contrastVal.textContent = contrastEl.value;
+      waveVal.textContent = waveEl.value;
+      scheduleRender();
+    });
+  });
+
+  [crosshatchEl, invertEl].forEach(el=>{
+    el.addEventListener('change', scheduleRender);
+  });
+
+  angleSeg.addEventListener('click', e=>{
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    angleSeg.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    angle = parseFloat(btn.dataset.angle);
+    scheduleRender();
+  });
+
+  document.getElementById('downloadBtn').addEventListener('click', ()=>{
+    const link = document.createElement('a');
+    link.download = I18N[lang].filename;
+    link.href = outCanvas.toDataURL('image/png');
+    link.click();
+  });
+
+  document.getElementById('newImgBtn').addEventListener('click', ()=>{
+    grayData = null;
+    outCanvas.style.display = 'none';
+    dropzone.style.display = 'block';
+    stageFoot.style.display = 'none';
+    panel.classList.remove('show');
+    fileInput.value = '';
+  });
+
+  applyLang();
+
+})();
+</script>
+
+</body>
+</html>
