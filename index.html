@@ -41,37 +41,58 @@ h2{font-family:'Archivo Black',sans-serif;font-size:20px;margin:0;line-height:1.
 </div>
 <script>
 const tools=[
- {f:'tools/two-color-converter.html',
+ {
+  f:'twocolorconverter.html',
   en:['Two-Color Converter','Turn any image into pure black and white with an adjustable threshold.'],
-  ru:['Ч/Б конвертер','Превращает изображение в чисто чёрно-белое с настраиваемым порогом.']},
- {f:'tools/cross-stitch-converter.html',
+  ru:['Ч/Б конвертер','Превращает изображение в чисто чёрно-белое с настраиваемым порогом.']
+ },
+ {
+  f:'cross-stitch-converter.html',
   en:['Cross-Stitch Converter','Convert a photo into a cross-stitch pattern with a thread palette.'],
-  ru:['Схема для вышивки крестиком','Преобразует фото в схему для вышивки крестиком с палитрой ниток.']},
- {f:'tools/linocut.html',
+  ru:['Схема для вышивки крестиком','Преобразует фото в схему для вышивки крестиком с палитрой ниток.']
+ },
+ {
+  f:'linocut.html',
   en:['Linocut Maker','Turn a photo into a bold linocut-style print.'],
-  ru:['Линогравюра','Превращает фото в контрастный отпечаток в стиле линогравюры.']},
- {f:'tools/stipple.html',
+  ru:['Линогравюра','Превращает фото в контрастный отпечаток в стиле линогравюры.']
+ },
+ {
+  f:'stipple.html',
   en:['Stipple Halftone','Render a photo as a plate of dots in a halftone style.'],
-  ru:['Пунктир и полутона','Превращает фото в изображение из точек в стиле полутона.']},
- {f:'tools/pixelate.html',
+  ru:['Пунктир и полутона','Превращает фото в изображение из точек в стиле полутона.']
+ },
+ {
+  f:'pixelate.html',
   en:['Pixel Art Maker','Convert a photo into pixel art with a chosen resolution and palette.'],
-  ru:['Пиксель-арт','Превращает фото в пиксель-арт с выбранным разрешением и палитрой.']},
- {f:'tools/pdf-merge.html',
+  ru:['Пиксель-арт','Превращает фото в пиксель-арт с выбранным разрешением и палитрой.']
+ },
+ {
+  f:'pdf-sklejka.html',
   en:['PDF Merger','Combine several PDF files into a single document.'],
-  ru:['Склейка PDF','Объединяет несколько PDF-файлов в один документ.']}
+  ru:['Склейка PDF','Объединяет несколько PDF-файлов в один документ.']
+ }
 ];
-const ui={en:{title:'Image Tools',sub:'A small collection of browser tools for photos and PDFs. Everything runs locally.',open:'Open →'},
-          ru:{title:'Инструменты для изображений',sub:'Небольшой набор браузерных инструментов для фото и PDF. Всё работает локально.',open:'Открыть →'}};
+
+const ui={
+  en:{title:'Image Tools',sub:'A small collection of browser tools for photos and PDFs. Everything runs locally.',open:'Open →'},
+  ru:{title:'Инструменты для изображений',sub:'Небольшой набор браузерных инструментов для фото и PDF. Всё работает локально.',open:'Открыть →'}
+};
+
 function render(l){
   document.documentElement.lang=l;
   document.querySelectorAll('[data-t]').forEach(e=>e.textContent=ui[l][e.dataset.t]);
   document.title=ui[l].title;
-  document.getElementById('grid').innerHTML=tools.map((t,i)=>`<a class="card" href="${t.f}"><span class="n">${String(i+1).padStart(2,'0')}</span><h2>${t[l][0]}</h2><p class="d">${t[l][1]}</p><span class="go">${ui[l].open}</span></a>`).join('');
+  document.getElementById('grid').innerHTML=tools.map((t,i)=>
+    `<a class="card" href="${t.f}"><span class="n">${String(i+1).padStart(2,'0')}</span><h2>${t[l][0]}</h2><p class="d">${t[l][1]}</p><span class="go">${ui[l].open}</span></a>`
+  ).join('');
   document.querySelectorAll('.lang button').forEach(b=>b.classList.toggle('on',b.dataset.l===l));
   try{localStorage.setItem('lang',l)}catch(e){}
 }
+
 document.querySelectorAll('.lang button').forEach(b=>b.onclick=()=>render(b.dataset.l));
-let s='en';try{s=localStorage.getItem('lang')||((navigator.language||'').startsWith('ru')?'ru':'en')}catch(e){}
+
+let s='en';
+try{s=localStorage.getItem('lang')||((navigator.language||'').startsWith('ru')?'ru':'en')}catch(e){}
 render(s);
 </script>
 </body>
