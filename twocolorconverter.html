@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <link rel="icon" type="image/png" href="favicon.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Two Color Converter. Бесплатный онлайн-конвертер изображений в черно-белый режим. Free online threshold image converter and binary image tool.">
+<meta name="description" content="Two Color Converter. Free online threshold image converter and binary image tool. Бесплатный онлайн-конвертер изображений в черно-белый режим.">
 <meta name="keywords" content="two color converter, threshold image converter, binary image converter, black and white converter, конвертер чб изображений, бинаризация изображения, черно белый конвертер">
-<title id="pageTitle">Конвертер Ч/Б изображений | Онлайн бинаризация фото</title>
+<title id="pageTitle">Two Color Converter | Free Online Threshold Image Converter</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=Archivo+Black&family=Mrs+Saint+Delafield&display=swap" rel="stylesheet">
@@ -583,25 +583,25 @@
 
   <div class="hero">
     <div class="hero-top">
-      <div class="eyebrow" data-i18n="eyebrow">чёрное · белое · порог</div>
+      <div class="eyebrow" data-i18n="eyebrow">black · white · threshold</div>
       <div class="lang-toggle">
-        <button class="lang-btn active" id="langRu" data-lang="ru">RU</button>
-        <button class="lang-btn" id="langEn" data-lang="en">EN</button>
+        <button class="lang-btn active" id="langEn" data-lang="en">EN</button>
+        <button class="lang-btn" id="langRu" data-lang="ru">RU</button>
       </div>
     </div>
     <div class="headline-wrap">
-      <h1 data-i18n="headline">Ч/Б</h1>
-      <div class="script" data-i18n="script">конвертер</div>
+      <h1 data-i18n="headline">Two Color Converter</h1>
+      <div class="script" data-i18n="script">converter</div>
     </div>
-    <p class="caption" data-i18n="caption">свет и тень, разделённые ровно там, где скажете вы.</p>
+    <p class="caption" data-i18n="caption">light and shadow, split exactly where you say.</p>
   </div>
 
   <div class="stage">
     <label class="dropzone" id="dropzone" for="fileInput">
       <div class="empty-state" id="emptyState">
         <span class="mark"></span>
-        <p data-i18n="choose">Выбрать изображение</p>
-        <small data-i18n="dragHint">или перетащите файл (на компьютере)</small>
+        <p data-i18n="choose">Choose an image</p>
+        <small data-i18n="dragHint">or drag & drop a file (desktop)</small>
       </div>
       <canvas id="canvas"></canvas>
       <input type="file" id="fileInput" accept="image/*">
@@ -610,20 +610,20 @@
 
   <div class="controls">
     <div class="slider-row">
-      <span class="label" data-i18n="threshold">Порог</span>
+      <span class="label" data-i18n="threshold">Threshold</span>
       <input type="range" id="threshold" min="1" max="254" value="128">
       <span class="value" id="thresholdValue">128</span>
     </div>
     <div class="actions">
       <div class="left">
-        <button id="invertBtn" data-i18n="invert">Инвертировать</button>
-        <button id="resetBtn" data-i18n="reset">Сбросить</button>
+        <button id="invertBtn" data-i18n="invert">Invert</button>
+        <button id="resetBtn" data-i18n="reset">Reset</button>
       </div>
-      <button class="primary" id="downloadBtn" data-i18n="download">Скачать PNG</button>
+      <button class="primary" id="downloadBtn" data-i18n="download">Download PNG</button>
     </div>
     <div class="color-row">
       <div class="color-row-head">
-        <span class="label" data-i18n="colorsLabel">Цвета</span>
+        <span class="label" data-i18n="colorsLabel">Colors</span>
         <span class="count" id="colorCount">2 / 10</span>
       </div>
       <div class="color-list" id="colorList"></div>
@@ -645,8 +645,8 @@
   </div>
 
   <footer>
-    <div data-i18n="privacy">Обработка происходит локально в браузере — файлы никуда не отправляются.</div>
-    <div class="ad-line"><span data-i18n="adLabel">По вопросам рекламы:</span> <a href="mailto:twocolorconverter@gmail.com">twocolorconverter@gmail.com</a></div>
+    <div data-i18n="privacy">Processing happens locally in your browser — files are never uploaded.</div>
+    <div class="ad-line"><span data-i18n="adLabel">For advertising inquiries:</span> <a href="mailto:twocolorconverter@gmail.com">twocolorconverter@gmail.com</a></div>
   </footer>
 
 <script>
@@ -698,7 +698,8 @@
     }
   };
 
-  let currentLang = 'ru';
+  // English is the default language
+  let currentLang = 'en';
   let statusKey = null;
 
   function applyLang(lang){
