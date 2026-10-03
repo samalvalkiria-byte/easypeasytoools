@@ -91,9 +91,10 @@ function render(l){
 
 document.querySelectorAll('.lang button').forEach(b=>b.onclick=()=>render(b.dataset.l));
 
+// English is the default; only a manually saved choice overrides it
 let s='en';
-try{s=localStorage.getItem('lang')||((navigator.language||'').startsWith('ru')?'ru':'en')}catch(e){}
-render(s);
+try{s=localStorage.getItem('lang')||'en'}catch(e){}
+render(s==='ru'?'ru':'en');
 </script>
 </body>
 </html>
