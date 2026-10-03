@@ -6,11 +6,17 @@
 <title>Image Tools</title>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=Archivo+Black&display=swap" rel="stylesheet">
 <style>
-:root{--paper:#f7f5f0;--panel:#efece4;--ink:#151310;--grey:#726f67;--line:rgba(21,19,16,.3)}
+:root{--paper:#f7f5f0;--panel:#efece4;--ink:#151310;--grey:#726f67;--line:rgba(21,19,16,.3);--accent:#ff4b1f}
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:'Archivo',system-ui,sans-serif;line-height:1.5}
-.wrap{max-width:960px;margin:0 auto;padding:40px 20px 60px}
-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:2px solid var(--ink);padding-bottom:20px;margin-bottom:32px}
+.wrap{max-width:960px;margin:0 auto;padding:28px 20px 60px}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:36px}
+.brand{display:inline-flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none}
+.brand-mark{width:34px;height:34px;display:grid;place-items:center;background:var(--ink);color:var(--paper);font-family:'Archivo Black',sans-serif;font-size:20px;line-height:1;transition:background .15s}
+.brand-name{font-family:'Archivo Black',sans-serif;font-size:26px;letter-spacing:-.03em;line-height:1}
+.brand-name i{font-style:normal;color:var(--accent)}
+.brand:hover .brand-mark{background:var(--accent)}
+header{border-bottom:2px solid var(--ink);padding-bottom:20px;margin-bottom:32px}
 h1{font-family:'Archivo Black',sans-serif;font-size:clamp(32px,6vw,56px);line-height:1;margin:0 0 8px;text-transform:uppercase}
 header p{margin:0;color:var(--grey);max-width:480px}
 .lang{display:flex;border:1px solid var(--ink);flex-shrink:0}
@@ -25,17 +31,21 @@ a.card:hover .n{color:rgba(247,245,240,.7)}
 h2{font-family:'Archivo Black',sans-serif;font-size:20px;margin:0;line-height:1.15}
 .d{color:var(--grey);font-size:14px;margin:0}
 .go{margin-top:auto;padding-top:8px;font-weight:600;font-size:14px}
-@media(prefers-reduced-motion:reduce){a.card{transition:none}}
+@media(prefers-reduced-motion:reduce){a.card,.brand-mark{transition:none}}
 </style>
 </head>
 <body>
 <div class="wrap">
-<header>
-  <div>
-    <h1 data-t="title">Image Tools</h1>
-    <p data-t="sub">A small collection of browser tools for photos and PDFs. Everything runs locally.</p>
-  </div>
+<div class="topbar">
+  <a class="brand" href="/" aria-label="fralax">
+    <span class="brand-mark">F</span>
+    <span class="brand-name">fralax<i>.</i></span>
+  </a>
   <div class="lang"><button data-l="en" class="on">EN</button><button data-l="ru">RU</button></div>
+</div>
+<header>
+  <h1 data-t="title">Image Tools</h1>
+  <p data-t="sub">A small collection of browser tools for photos and PDFs. Everything runs locally.</p>
 </header>
 <div class="grid" id="grid"></div>
 </div>
